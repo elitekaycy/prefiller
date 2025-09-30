@@ -6,9 +6,9 @@ chrome.runtime.onInstalled.addListener(async () => {
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error('Error setting panel behavior:', error));
 
-  chrome.storage.sync.get(['settings'], (result) => {
+  chrome.storage.local.get(['settings'], (result) => {
     if (!result.settings) {
-      chrome.storage.sync.set({
+      chrome.storage.local.set({
         settings: {
           apiKey: '',
           documents: [],
@@ -22,13 +22,13 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.action) {
     case 'GET_SETTINGS':
-      chrome.storage.sync.get(['settings'], (result) => {
+      chrome.storage.local.get(['settings'], (result) => {
         sendResponse(result.settings);
       });
       return true;
 
     case 'SAVE_SETTINGS':
-      chrome.storage.sync.set({ settings: message.settings }, () => {
+      chrome.storage.local.set({ settings: message.settings }, () => {
         sendResponse({ success: true });
       });
       return true;
@@ -49,7 +49,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
-    chrome.storage.sync.get(['settings'], (result) => {
+    chrome.storage.local.get(['settings'], (result) => {
       if (result.settings?.isEnabled) {
         setTimeout(() => {
           chrome.tabs.sendMessage(tabId, { action: 'ANALYZE_FORMS' });

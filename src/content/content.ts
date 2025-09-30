@@ -44,10 +44,16 @@ class FormAnalyzer {
       'input[type="tel"]',
       'input[type="url"]',
       'input[type="password"]',
-      'textarea',
-      'select',
+      'input[type="search"]',
+      'input[type="date"]',
+      'input[type="datetime-local"]',
+      'input[type="month"]',
+      'input[type="week"]',
+      'input[type="time"]',
       'input[type="number"]',
-      'input[type="date"]'
+      'input:not([type])', // inputs without type attribute default to text
+      'textarea',
+      'select'
     ];
 
     const elements = document.querySelectorAll(formSelectors.join(', '));
@@ -195,32 +201,37 @@ class FormAnalyzer {
     const settings = await this.getSettings();
 
     if (!settings.apiKey) {
-      this.showNotification('Please configure your Gemini API key first!');
+      this.showNotification('Please configure your Gemini API key first!', 'error');
       return;
     }
 
     if (this.detectedForms.length === 0) {
-      this.showNotification('No forms detected. Try analyzing the page first.');
+      this.showNotification('No forms detected on this page.', 'error');
       return;
     }
 
-    this.showNotification('Filling forms with AI...');
+    this.showNotification(`🔍 Analyzing ${this.detectedForms.length} form fields...`, 'loading');
 
     try {
       const context = this.buildContext(settings);
+
+      this.showNotification('🤖 Generating responses with AI...', 'loading');
       const responses = await this.getAIResponses(context, settings.apiKey);
 
+      this.showNotification('✨ Filling form fields...', 'loading');
       this.applyResponses(responses);
-      this.showNotification('Forms filled successfully!');
+
+      this.showNotification(`✅ Successfully filled ${responses.filter(r => r).length} fields!`, 'success');
     } catch (error) {
       console.error('Error filling forms:', error);
-      this.showNotification('Error filling forms. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      this.showNotification(`❌ Error: ${errorMessage}`, 'error');
     }
   }
 
   private async getSettings() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(['settings'], (result) => {
+      chrome.storage.local.get(['settings'], (result) => {
         resolve(result.settings || { apiKey: '', documents: [], isEnabled: true });
       });
     });
@@ -284,10 +295,29 @@ class FormAnalyzer {
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('API Error Response:', errorText);
+
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error?.message) {
+          throw new Error(`API Error: ${errorData.error.message}`);
+        }
+      } catch (e) {
+        // If parsing fails, use the status text
+      }
+
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
+
+    // Validate response structure
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+      console.error('Invalid API response structure:', data);
+      throw new Error('Invalid response from Gemini API. Please check your API key and try again.');
+    }
+
     const text = data.candidates[0].content.parts[0].text;
 
     return this.parseAIResponse(text);
@@ -339,11 +369,20 @@ class FormAnalyzer {
     }
   }
 
-  private showNotification(message: string) {
+  private showNotification(message: string, type: 'loading' | 'success' | 'error' = 'loading') {
     const existing = document.getElementById('prefiller-notification');
     if (existing) {
       existing.remove();
     }
+
+    const colors = {
+      loading: { bg: '#1f2937', border: '#3b82f6', text: '#fff' },
+      success: { bg: '#065f46', border: '#10b981', text: '#fff' },
+      error: { bg: '#7f1d1d', border: '#ef4444', text: '#fff' }
+    };
+
+    const config = colors[type];
+    const showSpinner = type === 'loading';
 
     const notification = document.createElement('div');
     notification.id = 'prefiller-notification';
@@ -352,25 +391,62 @@ class FormAnalyzer {
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #1f2937;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: ${config.bg};
+        color: ${config.text};
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 2px solid ${config.border};
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        z-index: 999999;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-size: 14px;
-        max-width: 300px;
+        max-width: 350px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease-out;
       ">
-        🤖 ${message}
+        ${showSpinner ? `
+          <div style="
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          "></div>
+        ` : ''}
+        <div style="flex: 1; line-height: 1.4;">${message}</div>
       </div>
+      <style>
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
     `;
 
     document.body.appendChild(notification);
 
-    setTimeout(() => {
-      notification.remove();
-    }, 3000);
+    // Auto-dismiss success and error messages after 5 seconds, keep loading until replaced
+    if (type !== 'loading') {
+      setTimeout(() => {
+        const el = document.getElementById('prefiller-notification');
+        if (el) {
+          el.style.animation = 'slideOut 0.3s ease-in';
+          setTimeout(() => el.remove(), 300);
+        }
+      }, 5000);
+    }
   }
 }
 

@@ -16,7 +16,7 @@ export function App() {
   });
 
   useEffect(() => {
-    chrome.storage.sync.get(['settings'], (result) => {
+    chrome.storage.local.get(['settings'], (result) => {
       if (result.settings) {
         const decoded = { ...result.settings };
         if (decoded.apiKey) {
@@ -34,7 +34,7 @@ export function App() {
     });
   }, []);
 
-  const updateSettings = (newSettings: Partial<ExtensionSettings>) => {
+  const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
 
@@ -44,7 +44,20 @@ export function App() {
       toStore.apiKey = EncryptionUtil.encode(toStore.apiKey);
     }
 
-    chrome.storage.sync.set({ settings: toStore });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        chrome.storage.local.set({ settings: toStore }, () => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve();
+          }
+        });
+      });
+    } catch (error) {
+      console.error('Storage error:', error);
+      alert(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleStepComplete = (step: AppStep) => {

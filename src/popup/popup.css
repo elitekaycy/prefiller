@@ -8,10 +8,10 @@
 :root {
   --gemini-bg: #1f1f1f;
   --gemini-surface: #2a2a2a;
-  --gemini-surface-hover: #343434;
-  --gemini-border: #3c4043;
+  --gemini-surface-hover: #3a3a3a;
+  --gemini-border: #4a4a4a;
   --gemini-text-primary: #e8eaed;
-  --gemini-text-secondary: #9aa0a6;
+  --gemini-text-secondary: #b8bdc3;
   --gemini-accent: #8ab4f8;
   --gemini-accent-hover: #aecbfa;
   --gemini-success: #81c995;
@@ -168,6 +168,9 @@ body {
   font-size: 13px;
   color: var(--gemini-text-secondary);
   line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .info-box-title {
@@ -268,6 +271,39 @@ body {
 
 .doc-item-unselected:hover {
   background: var(--gemini-surface-hover);
+}
+
+/* Document list scrollbar */
+.doc-list-container {
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.doc-list-container::-webkit-scrollbar {
+  width: 10px;
+}
+
+.doc-list-container::-webkit-scrollbar-track {
+  background: var(--gemini-surface);
+  border-radius: 5px;
+  border: 1px solid var(--gemini-border);
+}
+
+.doc-list-container::-webkit-scrollbar-thumb {
+  background: var(--gemini-accent);
+  border-radius: 5px;
+  border: 2px solid var(--gemini-surface);
+}
+
+.doc-list-container::-webkit-scrollbar-thumb:hover {
+  background: var(--gemini-accent-hover);
+}
+
+/* Scrollbar for Firefox */
+.doc-list-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gemini-accent) var(--gemini-surface);
 }
 
 .status-grid {

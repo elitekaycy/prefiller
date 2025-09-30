@@ -9,48 +9,29 @@ interface FormActionsProps {
 }
 
 export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiKey }: FormActionsProps) {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isFilling, setIsFilling] = useState(false);
-  const [lastAction, setLastAction] = useState<'analyze' | 'fill' | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleAnalyzePage = async () => {
-    setIsAnalyzing(true);
-    setLastAction('analyze');
+  const handleAnalyzeAndFill = async () => {
+    setIsProcessing(true);
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
       if (tab.id) {
+        // First analyze forms
         await chrome.tabs.sendMessage(tab.id, { action: 'ANALYZE_FORMS' });
-      }
-    } catch (error) {
-      console.error('Error analyzing page:', error);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
-  const handleFillForms = async () => {
-    setIsFilling(true);
-    setLastAction('fill');
+        // Small delay to ensure analysis completes
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-      if (tab.id) {
+        // Then fill forms
         await chrome.tabs.sendMessage(tab.id, { action: 'FILL_FORMS' });
       }
     } catch (error) {
-      console.error('Error filling forms:', error);
+      console.error('Error processing forms:', error);
     } finally {
-      setIsFilling(false);
+      setIsProcessing(false);
     }
-  };
-
-  const getStatusIcon = () => {
-    if (isAnalyzing) return '🔍';
-    if (isFilling) return '✨';
-    return '🤖';
   };
 
   const canUseFeatures = hasApiKey && isEnabled;
@@ -68,7 +49,9 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
         {/* Status Overview */}
         <div className="grid grid-cols-2 gap-4">
           <div className="status-grid rounded-xl p-4 text-center">
-            <div className="text-2xl mb-2">🔑</div>
+            <span className="material-symbols-outlined text-2xl mb-2">
+              {hasApiKey ? 'check_circle' : 'error'}
+            </span>
             <div className="text-xs text-gray-600">API Key</div>
             <div className={`text-sm font-medium ${hasApiKey ? 'text-green-400' : 'text-red-400'}`}>
               {hasApiKey ? 'Connected' : 'Missing'}
@@ -76,7 +59,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
           </div>
 
           <div className="status-grid rounded-xl p-4 text-center">
-            <div className="text-2xl mb-2">📄</div>
+            <span className="material-symbols-outlined text-2xl mb-2">description</span>
             <div className="text-xs text-gray-600">Documents</div>
             <div className={`text-sm font-medium ${hasDocuments ? 'text-green-400' : 'text-yellow-400'}`}>
               {hasDocuments ? `${hasDocuments} loaded` : 'Optional'}
@@ -87,14 +70,14 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
         {/* Extension Toggle */}
         <div className="flex items-center justify-between status-grid rounded-xl p-4">
           <div>
-            <div className="text-gray-800 font-medium">Auto-Fill Mode</div>
-            <div className="text-xs text-gray-600">Enable form filling assistance</div>
+            <div className="text-gray-200 font-medium">Auto-Fill Mode</div>
+            <div className="text-xs text-gray-400">Enable form filling assistance</div>
           </div>
           <button
             onClick={() => onToggle(!isEnabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
               isEnabled
-                ? 'bg-gradient-to-r from-blue-500 to-purple-500'
+                ? 'bg-blue-500'
                 : 'bg-gray-600'
             }`}
           >
@@ -106,48 +89,33 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
           </button>
         </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <button
-            onClick={handleAnalyzePage}
-            disabled={!canUseFeatures || isAnalyzing}
-            className={`gemini-button w-full ${!canUseFeatures ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-xl">🔍</span>
-              <span>{isAnalyzing ? 'Analyzing Page...' : 'Analyze Page'}</span>
-              {isAnalyzing && (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              )}
-            </div>
-          </button>
-
-          <button
-            onClick={handleFillForms}
-            disabled={!canUseFeatures || isFilling}
-            className={`gemini-button primary w-full ${!canUseFeatures ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-xl">✨</span>
-              <span>{isFilling ? 'Filling Forms...' : 'Fill Forms with AI'}</span>
-              {isFilling && (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              )}
-            </div>
-          </button>
-        </div>
+        {/* Action Button */}
+        <button
+          onClick={handleAnalyzeAndFill}
+          disabled={!canUseFeatures || isProcessing}
+          className={`gemini-button primary w-full ${!canUseFeatures ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <span className="material-symbols-outlined">auto_fix_high</span>
+          <span>{isProcessing ? 'Processing...' : 'Analyze & Fill Forms'}</span>
+          {isProcessing && (
+            <div className="w-4 h-4 border-2 border-gray-800 border-t-transparent rounded-full animate-spin"></div>
+          )}
+        </button>
 
         {/* Instructions */}
         {canUseFeatures ? (
-          <div className="status-grid rounded-xl p-4 space-y-2 text-xs text-gray-600">
-            <div className="font-medium text-gray-800 mb-2">How to use:</div>
-            <div>1. Click "Analyze Page" to detect form fields</div>
-            <div>2. Click "Fill Forms with AI" to auto-complete them</div>
-            <div>3. Review and adjust the generated content</div>
+          <div className="info-box">
+            <div className="info-box-title">How to use:</div>
+            <div className="text-xs space-y-1">
+              <div>• Click "Analyze & Fill Forms" to detect and auto-complete form fields</div>
+              <div>• Review and adjust the generated content as needed</div>
+              <div>• The extension uses your personal documents for context</div>
+            </div>
           </div>
         ) : (
-          <div className="bg-red-900/30 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm text-center">
-            {!hasApiKey ? '⚠️ API key required to use form filling features' : '⚠️ Enable auto-fill mode to continue'}
+          <div className="error-box">
+            <span className="material-symbols-outlined">error</span>
+            <span>{!hasApiKey ? 'API key required to use form filling features' : 'Enable auto-fill mode to continue'}</span>
           </div>
         )}
 

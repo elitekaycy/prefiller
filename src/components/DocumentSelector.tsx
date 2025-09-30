@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { UploadedDocument } from '@/types';
+import { StorageManager } from '@/utils/storage';
 
 interface DocumentSelectorProps {
   documents: UploadedDocument[];
@@ -12,17 +13,34 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
   const [selectedDocs, setSelectedDocs] = useState<string[]>(documents.map(d => d.id));
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleFileUpload = async (files: FileList) => {
     setIsUploading(true);
+    setUploadError(null);
     const newDocuments: UploadedDocument[] = [];
+    const errors: string[] = [];
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
+        // Check file size before reading (5MB limit)
+        if (file.size > 5000000) {
+          errors.push(`"${file.name}" is too large (${Math.round(file.size / 1024)}KB). Maximum 5MB per file.`);
+          continue;
+        }
+
         try {
           const content = await readFileAsText(file);
+
+          // Validate document size
+          const validation = StorageManager.validateDocumentSize(content, file.name);
+          if (!validation.valid) {
+            errors.push(validation.error!);
+            continue;
+          }
+
           const document: UploadedDocument = {
             id: Date.now().toString() + i,
             name: file.name,
@@ -33,11 +51,18 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
           newDocuments.push(document);
         } catch (error) {
           console.error(`Failed to read file ${file.name}:`, error);
+          errors.push(`Failed to read "${file.name}"`);
         }
       }
 
-      onDocumentsChange([...documents, ...newDocuments]);
-      setSelectedDocs([...selectedDocs, ...newDocuments.map(d => d.id)]);
+      if (newDocuments.length > 0) {
+        onDocumentsChange([...documents, ...newDocuments]);
+        setSelectedDocs([...selectedDocs, ...newDocuments.map(d => d.id)]);
+      }
+
+      if (errors.length > 0) {
+        setUploadError(errors.join(' '));
+      }
     } finally {
       setIsUploading(false);
     }
@@ -103,24 +128,37 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
           </div>
         )}
 
+        {/* Upload Error */}
+        {uploadError && (
+          <div className="error-box">
+            <span className="material-symbols-outlined">error</span>
+            <span>{uploadError}</span>
+          </div>
+        )}
+
         {/* Upload Area */}
         <div
           className={`document-selector border-2 border-dashed transition-all duration-300 ${
             isDragging
-              ? 'border-blue-500 bg-blue-50'
-              : 'border-gray-300 hover:border-gray-400'
+              ? 'border-blue-400'
+              : ''
           }`}
+          style={{
+            borderColor: isDragging ? 'var(--gemini-accent)' : 'var(--gemini-border)',
+            backgroundColor: isDragging ? 'rgba(138, 180, 248, 0.1)' : 'var(--gemini-surface)'
+          }}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
         >
           <div className="text-center space-y-2">
-            <div className="text-3xl">📄</div>
+            <span className="material-symbols-outlined text-4xl" style={{ color: 'var(--gemini-accent)' }}>upload_file</span>
             <div>
-              <div className="text-gray-800 mb-2 text-sm font-medium">
+              <div className="mb-2 text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>
                 Drag & drop or
               </div>
-              <label className={`gemini-button text-sm py-2 px-4 inline-block ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+              <label className={`gemini-button secondary text-sm py-2 px-4 inline-block ${isUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                <span className="material-symbols-outlined text-sm">folder_open</span>
                 Browse files
                 <input
                   type="file"
@@ -137,7 +175,7 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
                 />
               </label>
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
               TXT, PDF, DOC, DOCX
             </div>
           </div>
@@ -146,11 +184,11 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
         {/* Document List */}
         {documents.length > 0 && (
           <div className="space-y-2">
-            <div className="text-sm font-medium text-gray-700">
+            <div className="text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>
               Selected: {selectedDocs.length}/{documents.length}
             </div>
 
-            <div className="space-y-2 max-h-32 overflow-y-auto">
+            <div className="doc-list-container space-y-2">
               {documents.map((doc) => (
                 <div
                   key={doc.id}
@@ -164,16 +202,18 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
                   <div className="flex items-center gap-3">
                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
                       selectedDocs.includes(doc.id)
-                        ? 'bg-blue-500 border-blue-500'
-                        : 'border-gray-400'
-                    }`}>
+                        ? 'border-blue-400'
+                        : 'border-gray-500'
+                    }`} style={{
+                      backgroundColor: selectedDocs.includes(doc.id) ? 'var(--gemini-accent)' : 'transparent'
+                    }}>
                       {selectedDocs.includes(doc.id) && (
-                        <div className="w-2 h-2 bg-white rounded-sm"></div>
+                        <span className="material-symbols-outlined text-xs" style={{ color: '#1f1f1f' }}>check</span>
                       )}
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-800">{doc.name}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>{doc.name}</div>
+                      <div className="text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
                         {new Date(doc.uploadedAt).toLocaleDateString()}
                       </div>
                     </div>
@@ -183,9 +223,12 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
                       e.stopPropagation();
                       removeDocument(doc.id);
                     }}
-                    className="text-gray-500 hover:text-red-600 transition-colors p-1"
+                    className="transition-colors p-1"
+                    style={{ color: 'var(--gemini-text-secondary)' }}
+                    onMouseOver={(e) => e.currentTarget.style.color = 'var(--gemini-error)'}
+                    onMouseOut={(e) => e.currentTarget.style.color = 'var(--gemini-text-secondary)'}
                   >
-                    🗑️
+                    <span className="material-symbols-outlined text-sm">delete</span>
                   </button>
                 </div>
               ))}
@@ -211,7 +254,8 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
 
         {/* Info */}
         <div className="info-box">
-          💡 Tip: Upload resumes, cover letters, or personal info to help Gemini generate more personalized form responses.
+          <span className="material-symbols-outlined text-sm">lightbulb</span>
+          <span>Upload resumes, cover letters, or personal info to help Gemini generate more personalized form responses.</span>
         </div>
       </div>
     </>
