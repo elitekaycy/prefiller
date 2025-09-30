@@ -94,12 +94,6 @@ export function App() {
 
   return (
     <div className="gemini-container">
-      <div className="floating-elements">
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-      </div>
-
       <div className="rainbow-border">
         <div className="gemini-content">
           <div className="step-container">

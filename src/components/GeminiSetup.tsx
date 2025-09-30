@@ -116,7 +116,8 @@ export function GeminiSetup({ apiKey, onApiKeyChange, onComplete }: GeminiSetupP
         {apiKey && !showManualInput && (
           <div className="text-center">
             <div className="status-indicator status-connected">
-              ✅ API Key Configured
+              <span className="material-symbols-outlined">check_circle</span>
+              API Key Configured
             </div>
           </div>
         )}
@@ -129,17 +130,13 @@ export function GeminiSetup({ apiKey, onApiKeyChange, onComplete }: GeminiSetupP
               disabled={isConnecting}
               className="gemini-button primary"
             >
+              <span className="material-symbols-outlined">link</span>
               Connect with Google
             </button>
 
             {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">or enter manually</span>
-              </div>
+            <div className="divider-text">
+              <span>or enter manually</span>
             </div>
 
             {/* Manual Input on Main Screen */}
@@ -155,24 +152,30 @@ export function GeminiSetup({ apiKey, onApiKeyChange, onComplete }: GeminiSetupP
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors"
+                  style={{ color: 'var(--gemini-text-secondary)' }}
                 >
-                  {showKey ? '👁️' : '👁️‍🗨️'}
+                  <span className="material-symbols-outlined">
+                    {showKey ? 'visibility' : 'visibility_off'}
+                  </span>
                 </button>
               </div>
 
               <button
                 onClick={handleManualConnect}
                 disabled={!inputValue.trim() || isConnecting}
-                className="gemini-button"
+                className="gemini-button secondary"
               >
                 {isConnecting ? (
-                  <div className="flex items-center justify-center gap-2">
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                     <span>Verifying...</span>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  </div>
+                  </>
                 ) : (
-                  'Verify & Connect'
+                  <>
+                    <span className="material-symbols-outlined">verified</span>
+                    <span>Verify & Connect</span>
+                  </>
                 )}
               </button>
             </div>
@@ -198,9 +201,12 @@ export function GeminiSetup({ apiKey, onApiKeyChange, onComplete }: GeminiSetupP
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors"
+                  style={{ color: 'var(--gemini-text-secondary)' }}
                 >
-                  {showKey ? '👁️' : '👁️‍🗨️'}
+                  <span className="material-symbols-outlined">
+                    {showKey ? 'visibility' : 'visibility_off'}
+                  </span>
                 </button>
               </div>
 
@@ -245,13 +251,15 @@ export function GeminiSetup({ apiKey, onApiKeyChange, onComplete }: GeminiSetupP
         {/* Status Messages */}
         {connectionStatus === 'error' && (
           <div className="error-box">
-            ⚠️ Invalid API key. Please check and try again.
+            <span className="material-symbols-outlined">error</span>
+            <span>Invalid API key. Please check and try again.</span>
           </div>
         )}
 
         {connectionStatus === 'success' && (
           <div className="success-box">
-            🎉 Successfully connected to Gemini! Moving to next step...
+            <span className="material-symbols-outlined">check_circle</span>
+            <span>Successfully connected to Gemini! Moving to next step...</span>
           </div>
         )}
       </div>

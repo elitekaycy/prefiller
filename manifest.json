@@ -7,7 +7,8 @@
     "activeTab",
     "storage",
     "scripting",
-    "identity"
+    "identity",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>",
@@ -25,8 +26,10 @@
     }
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_title": "Prefiller"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "icons": {
     "16": "icons/icon16.png",

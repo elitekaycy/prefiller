@@ -1,5 +1,10 @@
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('Prefiller extension installed');
+
+  // Enable side panel behavior
+  await chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error('Error setting panel behavior:', error));
 
   chrome.storage.sync.get(['settings'], (result) => {
     if (!result.settings) {
@@ -12,12 +17,6 @@ chrome.runtime.onInstalled.addListener(() => {
       });
     }
   });
-});
-
-chrome.action.onClicked.addListener((tab) => {
-  if (tab.id) {
-    chrome.tabs.sendMessage(tab.id, { action: 'TOGGLE_EXTENSION' });
-  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
