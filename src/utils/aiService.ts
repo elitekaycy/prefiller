@@ -2,16 +2,11 @@ import { GeminiAPI } from './gemini';
 import { ClaudeAPI } from './claude';
 import { ChromeAI } from './chromeai';
 import { GroqAPI } from './groq';
+import { IAIProvider } from './ai/IAIProvider';
 import { AIProvider } from '@/types';
 
-export interface AIServiceInterface {
-  generateContent(prompt: string): Promise<string>;
-  generateFormResponses(context: string, fields: Array<any>): Promise<string[]>;
-  testConnection(): Promise<boolean>;
-}
-
 export class AIService {
-  private provider: AIServiceInterface;
+  private provider: IAIProvider;
   private providerType: AIProvider;
 
   constructor(providerType: AIProvider, apiKey: string) {

@@ -1,5 +1,11 @@
-// Chrome Built-in AI (Gemini Nano) using the Prompt API
-// See: https://developer.chrome.com/docs/ai/built-in-apis
+/**
+ * Chrome Built-in AI Provider (Gemini Nano)
+ * Uses the Prompt API for local, free AI inference
+ * See: https://developer.chrome.com/docs/ai/built-in-apis
+ */
+
+import { BaseAIProvider } from './ai/BaseAIProvider';
+import { ProviderError, ProviderErrorCode } from './ai/ProviderError';
 
 export interface AILanguageModelCapabilities {
   available: 'readily' | 'after-download' | 'no';
@@ -32,23 +38,31 @@ declare global {
   }
 }
 
-export class ChromeAI {
+export class ChromeAI extends BaseAIProvider {
+  constructor() {
+    super();
+  }
+
+  getName(): string {
+    return 'Chrome AI';
+  }
+
+  requiresApiKey(): boolean {
+    return false;
+  }
+
   /**
    * Check if Chrome AI is available
    */
   static async isAvailable(): Promise<boolean> {
     try {
       if (!window.ai?.languageModel) {
-        console.log('Chrome AI: window.ai.languageModel not available');
         return false;
       }
 
       const capabilities = await window.ai.languageModel.capabilities();
-      console.log('Chrome AI capabilities:', capabilities);
-
       return capabilities.available !== 'no';
     } catch (error) {
-      console.error('Chrome AI availability check failed:', error);
       return false;
     }
   }
@@ -92,7 +106,6 @@ export class ChromeAI {
         };
       }
     } catch (error) {
-      console.error('Chrome AI status check failed:', error);
       return {
         available: false,
         status: 'not-supported',
@@ -103,128 +116,72 @@ export class ChromeAI {
 
   async generateContent(prompt: string): Promise<string> {
     try {
-      console.log('Chrome AI: Creating session...');
-
       if (!window.ai?.languageModel) {
-        throw new Error('Chrome AI is not available. Please use Chrome 127+ and enable the Prompt API.');
+        throw new ProviderError(
+          ProviderErrorCode.UNAVAILABLE,
+          'Chrome AI is not available. Please use Chrome 127+ and enable the Prompt API.',
+          this.getName()
+        );
       }
 
       const session = await window.ai.languageModel.create({
-        temperature: 0.4,
-        topK: 3
+        temperature: this.config.temperature,
+        topK: this.config.topK
       });
 
-      console.log('Chrome AI: Session created, generating response...');
-
       const response = await session.prompt(prompt);
-
-      console.log('Chrome AI: Response generated');
 
       // Clean up the session
       session.destroy();
 
       return response;
     } catch (error) {
-      console.error('Chrome AI generation failed:', error);
+      if (error instanceof ProviderError) {
+        throw error;
+      }
 
       if (error instanceof Error) {
         if (error.message.includes('not available')) {
-          throw new Error('Chrome AI is not available. Please enable it in chrome://flags or use another AI provider.');
+          throw new ProviderError(
+            ProviderErrorCode.UNAVAILABLE,
+            'Chrome AI is not available. Please enable it in chrome://flags or use another AI provider.',
+            this.getName()
+          );
         }
-        throw new Error(`Chrome AI Error: ${error.message}`);
+        throw new ProviderError(
+          ProviderErrorCode.UNKNOWN,
+          `Chrome AI Error: ${error.message}`,
+          this.getName(),
+          error
+        );
       }
 
-      throw new Error('Chrome AI request failed. Please try another AI provider.');
+      throw new ProviderError(
+        ProviderErrorCode.UNKNOWN,
+        'Chrome AI request failed. Please try another AI provider.',
+        this.getName()
+      );
     }
-  }
-
-  async generateFormResponses(context: string, fields: Array<{ label?: string; type: string; description?: string; required?: boolean; placeholder?: string }>): Promise<string[]> {
-    const prompt = this.buildFormPrompt(context, fields);
-    const response = await this.generateContent(prompt);
-    return this.parseFormResponse(response, fields.length);
-  }
-
-  private buildFormPrompt(context: string, fields: Array<any>): string {
-    let prompt = `Based on the following personal information, generate appropriate responses for form fields.\n\n`;
-    prompt += `Personal Information:\n${context}\n\n`;
-    prompt += `Form Fields to Fill:\n`;
-
-    fields.forEach((field, index) => {
-      const label = field.label || field.placeholder || `Field ${index + 1}`;
-      prompt += `${index + 1}. ${label} (${field.type})`;
-
-      if (field.description) {
-        prompt += ` - ${field.description}`;
-      }
-
-      if (field.required) {
-        prompt += ' [Required]';
-      }
-
-      prompt += '\n';
-    });
-
-    prompt += `\nInstructions:
-- Provide realistic, professional responses based on the personal information
-- For email fields, use a professional email format
-- For phone numbers, use format like (555) 123-4567
-- For dates, use MM/DD/YYYY format
-- Keep responses concise and appropriate for form fields
-- If you don't have enough information for a field, respond with "[SKIP]"
-- Format your response as a numbered list matching the field numbers above
-
-Example format:
-1. John Doe
-2. john.doe@email.com
-3. (555) 123-4567
-4. [SKIP]
-
-Your responses:`;
-
-    return prompt;
-  }
-
-  private parseFormResponse(response: string, expectedCount: number): string[] {
-    const lines = response.split('\n').filter(line => line.trim());
-    const responses: string[] = [];
-
-    for (let i = 0; i < expectedCount; i++) {
-      responses.push('');
-    }
-
-    lines.forEach(line => {
-      const match = line.match(/^(\d+)\.\s*(.+)$/);
-      if (match) {
-        const index = parseInt(match[1]) - 1;
-        const value = match[2].trim();
-
-        if (index >= 0 && index < expectedCount) {
-          responses[index] = value === '[SKIP]' ? '' : value;
-        }
-      }
-    });
-
-    return responses;
   }
 
   async testConnection(): Promise<boolean> {
     try {
-      console.log('Testing Chrome AI connection...');
-
       if (!window.ai?.languageModel) {
-        console.error('Chrome AI: window.ai.languageModel not available');
-        return false;
+        throw new ProviderError(
+          ProviderErrorCode.UNAVAILABLE,
+          'Chrome AI is not available',
+          this.getName()
+        );
       }
 
       const capabilities = await window.ai.languageModel.capabilities();
-      console.log('Chrome AI capabilities:', capabilities);
 
       if (capabilities.available === 'no') {
-        throw new Error('Chrome AI is not available. Please enable the Prompt API in chrome://flags');
-      }
-
-      if (capabilities.available === 'after-download') {
-        console.log('Chrome AI will download the model on first use...');
+        throw new ProviderError(
+          ProviderErrorCode.UNAVAILABLE,
+          'Chrome AI is not available. Please enable the Prompt API in chrome://flags',
+          this.getName()
+        );
       }
 
       // Try to create a session to test
@@ -232,10 +189,8 @@ Your responses:`;
       const testResponse = await session.prompt('Say "OK"');
       session.destroy();
 
-      console.log('Chrome AI test response:', testResponse);
       return testResponse.length > 0;
     } catch (error) {
-      console.error('Chrome AI connection test failed:', error);
       throw error;
     }
   }

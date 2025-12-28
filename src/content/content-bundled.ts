@@ -36,7 +36,6 @@ class SimpleDecoder {
       const decoded = atob(encodedText);
       return decodeURIComponent(escape(decoded)).replace(this.SALT, '');
     } catch (error) {
-      console.error('Failed to decode API key:', error);
       return encodedText; // Return as-is if decoding fails
     }
   }
@@ -71,14 +70,8 @@ class FormScraper {
       '[contenteditable="true"]'
     ];
 
-    console.log('🔍 Starting form field detection...');
-    console.log('🔍 Page readyState:', document.readyState);
-    console.log('🔍 Total input elements on page:', document.querySelectorAll('input').length);
-    console.log('🔍 Total textarea elements on page:', document.querySelectorAll('textarea').length);
-    console.log('🔍 Total select elements on page:', document.querySelectorAll('select').length);
     
     const elements = document.querySelectorAll(selectors.join(', '));
-    console.log(`Found ${elements.length} potential form elements:`, elements);
 
     // Also try to find elements by common form classes/attributes
     const commonFormSelectors = [
@@ -92,45 +85,34 @@ class FormScraper {
 
     commonFormSelectors.forEach(selector => {
       const commonElements = document.querySelectorAll(selector);
-      console.log(`Found ${commonElements.length} elements with selector "${selector}":`, commonElements);
     });
 
     elements.forEach((element, index) => {
-      console.log(`Checking element ${index + 1}:`, element);
       
       if (this.isValidField(element as HTMLElement)) {
-        console.log(`✅ Element ${index + 1} is valid`);
         const metadata = this.extractFieldMetadata(element as HTMLElement);
         if (metadata) {
-          console.log(`✅ Extracted metadata for element ${index + 1}:`, metadata);
           fields.push(metadata);
         } else {
-          console.log(`❌ Failed to extract metadata for element ${index + 1}`);
         }
       } else {
-        console.log(`❌ Element ${index + 1} is not valid (readonly, disabled, hidden, or filled)`);
       }
     });
 
-    console.log(`🔍 Scraped ${fields.length} form fields with metadata`, fields);
     return fields;
   }
 
   private isValidField(element: HTMLElement): boolean {
-    console.log('Checking field validity for:', element);
     
     if (element.hasAttribute('readonly')) {
-      console.log('❌ Field is readonly');
       return false;
     }
     
     if (element.hasAttribute('disabled')) {
-      console.log('❌ Field is disabled');
       return false;
     }
 
     if (!this.isVisible(element)) {
-      console.log('❌ Field is not visible');
       return false;
     }
 
@@ -138,11 +120,9 @@ class FormScraper {
     // Only skip fields that have actual content (not just empty string)
     const input = element as HTMLInputElement;
     if (input.value && input.value.trim().length > 0) {
-      console.log('❌ Field already has content:', input.value);
       return false; // Skip fields that already have meaningful content
     }
 
-    console.log('✅ Field is valid for filling');
     return true;
   }
 
@@ -384,23 +364,16 @@ class FormScraper {
   fillFields(fields: FieldMetadata[], responses: string[]): number {
     let filledCount = 0;
 
-    console.log(`\n🔧 Starting to fill ${fields.length} fields with ${responses.length} responses`);
 
     fields.forEach((field, index) => {
-      console.log(`\n📝 Field ${index + 1}/${fields.length}:`);
-      console.log(`   Label: "${field.label}"`);
-      console.log(`   Type: ${field.type}`);
 
       if (index >= responses.length) {
-        console.log(`   ⏭️ No response available (index ${index} >= ${responses.length})`);
         return;
       }
 
       const response = responses[index];
-      console.log(`   Response: "${response}"`);
 
       if (!response || response === '[SKIP]' || response.trim().length === 0) {
-        console.log(`   ⏭️ Skipping (empty or [SKIP])`);
         return;
       }
 
@@ -408,12 +381,9 @@ class FormScraper {
         const success = this.fillField(field, response);
         if (success) {
           filledCount++;
-          console.log(`   ✅ Successfully filled!`);
         } else {
-          console.log(`   ❌ Fill returned false`);
         }
       } catch (error) {
-        console.error(`   ❌ Error filling field ${index}:`, error);
       }
     });
 
@@ -423,7 +393,6 @@ class FormScraper {
   private fillField(field: FieldMetadata, value: string): boolean {
     const element = field.element;
 
-    console.log(`   🔧 Attempting to fill ${element.tagName} with value: "${value}"`);
 
     if (element.tagName.toLowerCase() === 'select') {
       return this.fillSelectField(element as HTMLSelectElement, value);
@@ -513,16 +482,11 @@ class FormAnalyzer {
     this.scraper = new FormScraper();
     this.isTopFrame = window.self === window.top;
 
-    console.log(`🚀 FormAnalyzer initialized in ${this.isTopFrame ? 'top frame' : 'iframe'}`);
-    console.log(`📍 Frame URL: ${window.location.href}`);
-    console.log(`📍 Frame origin: ${window.location.origin}`);
 
     // Log all iframes if we're in the top frame
     if (this.isTopFrame) {
       const iframes = document.querySelectorAll('iframe');
-      console.log(`🔍 Found ${iframes.length} iframe(s) in top frame`);
       iframes.forEach((iframe, index) => {
-        console.log(`  Iframe ${index + 1}: ${iframe.src || 'about:blank'}`);
       });
     }
 
@@ -531,7 +495,6 @@ class FormAnalyzer {
     // Listen for postMessage from executeScript (works across all frames)
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'PREFILLER_FILL_FORMS') {
-        console.log(`📨 Received PREFILLER_FILL_FORMS message in ${this.isTopFrame ? 'top frame' : 'iframe'}`);
         // Re-scan and fill
         this.analyzeForms();
         setTimeout(() => this.fillForms(), 3000); // Give forms time to be detected
@@ -565,7 +528,6 @@ class FormAnalyzer {
             description: field.description
           }));
           this.highlightDetectedFields();
-          console.log(`✅ Manual analysis: ${this.scrapedFields.length} form fields found`);
           sendResponse({ success: true, forms: this.detectedForms });
           break;
         case 'FILL_FORMS':
@@ -612,7 +574,6 @@ class FormAnalyzer {
       }));
 
       this.highlightDetectedFields();
-      console.log(`✅ Analyzed ${this.scrapedFields.length} form fields with comprehensive metadata`);
     }, 1000); // Wait 1 second for dynamic content to load
   }
 
@@ -671,31 +632,22 @@ class FormAnalyzer {
 
     try {
       let personalInfo = 'Personal Information:\n';
-      console.log(`📋 Settings documents count: ${settings.documents.length}`);
       settings.documents.forEach((doc: any) => {
         personalInfo += `\n${doc.name}:\n${doc.content}\n`;
-        console.log(`📄 Document: ${doc.name} (${doc.content.length} chars)`);
       });
 
       const prompt = this.scraper.buildAIPrompt(this.scrapedFields, personalInfo);
-      console.log(`\n📝 AI Prompt built (${prompt.length} chars):`);
-      console.log(prompt.substring(0, 500) + '...\n');
 
       const providerName = settings.aiProvider === 'claude' ? 'Anthropic Claude' : settings.aiProvider === 'groq' ? 'Groq' : 'Google Gemini';
       this.showNotification(`🤖 Generating responses with ${providerName}...`, 'loading');
-      console.log(`🤖 Calling ${providerName} API...`);
 
       const responses = await this.getAIResponses(settings.aiProvider, decodedApiKey, prompt);
-      console.log(`\n✅ AI returned ${responses.length} responses:`);
       responses.forEach((resp, i) => {
-        console.log(`  ${i + 1}. "${resp}"`);
       });
 
       this.showNotification('✨ Filling form fields...', 'loading');
-      console.log(`\n✨ Attempting to fill ${this.scrapedFields.length} fields with ${responses.length} responses...`);
 
       const filledCount = this.scraper.fillFields(this.scrapedFields, responses);
-      console.log(`✅ Successfully filled ${filledCount} fields`);
 
       this.scrapedFields.forEach((field, index) => {
         if (index < responses.length && responses[index] && responses[index] !== '[SKIP]') {
@@ -705,7 +657,6 @@ class FormAnalyzer {
 
       this.showNotification(`✅ Successfully filled ${filledCount} out of ${this.scrapedFields.length} fields!`, 'success');
     } catch (error) {
-      console.error('Error filling forms:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       this.showNotification(`❌ Error: ${errorMessage}`, 'error');
     }
@@ -745,7 +696,6 @@ class FormAnalyzer {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Claude API Error Response:', errorText);
         throw new Error(`Claude API request failed: ${response.status} ${response.statusText}`);
       }
 
@@ -773,7 +723,6 @@ class FormAnalyzer {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Groq API Error Response:', errorText);
         throw new Error(`Groq API request failed: ${response.status} ${response.statusText}`);
       }
 
@@ -813,11 +762,8 @@ class FormAnalyzer {
   }
 
   private parseAIResponse(text: string): string[] {
-    console.log(`\n🔍 Parsing AI response (${text.length} chars):`);
-    console.log('Raw AI text:', text);
 
     const lines = text.split('\n').filter(line => line.trim());
-    console.log(`📝 Split into ${lines.length} non-empty lines`);
 
     const responses: string[] = [];
 
@@ -827,13 +773,10 @@ class FormAnalyzer {
         const index = parseInt(match[1]) - 1;
         const value = match[2].trim();
         responses[index] = value === '[SKIP]' ? '' : value;
-        console.log(`  ✅ Matched line ${match[1]}: "${value}"`);
       } else {
-        console.log(`  ⏭️ Skipped line (no match): "${line}"`);
       }
     });
 
-    console.log(`\n✅ Parsed ${responses.length} responses from AI`);
     return responses;
   }
 

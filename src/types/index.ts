@@ -1,5 +1,9 @@
 export type AIProvider = 'gemini' | 'claude' | 'chromeai' | 'groq';
 
+// Export AI Provider types and errors
+export { IAIProvider, ProviderConfig } from '@/utils/ai/IAIProvider';
+export { ProviderError, ProviderErrorCode } from '@/utils/ai/ProviderError';
+
 export interface ExtensionSettings {
   aiProvider: AIProvider;
   apiKey: string;
