@@ -27,7 +27,13 @@ interface FieldMetadata {
   max?: number;
 }
 
-// Simple decoder for API key (matching the encoder in popup)
+/**
+ * Simple API Key Decoder (obfuscation only, NOT encryption)
+ *
+ * SECURITY NOTE: This uses a static SALT visible in source code.
+ * This is simple obfuscation to prevent casual viewing, not real encryption.
+ * chrome.storage.local provides the actual security boundary for the extension.
+ */
 class SimpleDecoder {
   private static readonly SALT = 'prefiller-salt-2024';
 
