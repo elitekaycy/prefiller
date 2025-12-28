@@ -1,10 +1,11 @@
 # Prefiller - AI-Powered Form Filling Extension
 
-An intelligent Chrome extension that uses Google Gemini AI to automatically fill forms based on your personal documents and context.
+An intelligent Chrome extension that uses AI (Anthropic Claude or Google Gemini) to automatically fill forms based on your personal documents and context.
 
 ## Features
 
-- 🤖 **AI-Powered Form Filling**: Uses Google Gemini API to generate contextually appropriate responses
+- 🤖 **AI-Powered Form Filling**: Uses Anthropic Claude or Google Gemini API to generate contextually appropriate responses
+- 🧠 **Multiple AI Providers**: Choose between Claude (default) and Gemini based on your preference
 - 📄 **Document Upload**: Upload personal documents (TXT, PDF, DOC, DOCX) to provide context
 - 🔍 **Smart Form Detection**: Automatically detects and analyzes form fields on any webpage
 - ✨ **Intelligent Responses**: Generates professional, relevant responses based on your documents
@@ -17,7 +18,9 @@ An intelligent Chrome extension that uses Google Gemini AI to automatically fill
 
 - Node.js (v16 or higher)
 - Chrome browser
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- AI API key:
+  - **Claude API key** ([Get one here](https://console.anthropic.com/account/keys)) - Recommended
+  - **Gemini API key** ([Get one here](https://makersuite.google.com/app/apikey)) - Alternative
 
 ### Installation
 
@@ -38,10 +41,11 @@ An intelligent Chrome extension that uses Google Gemini AI to automatically fill
 
 ### Configuration
 
-1. **Set up API Key:**
+1. **Choose AI Provider & Set up API Key:**
    - Click the Prefiller extension icon in your toolbar
-   - Enter your Google Gemini API key
-   - Click "Save"
+   - Choose between Anthropic Claude (recommended) or Google Gemini
+   - Enter your API key for the selected provider
+   - Click "Verify & Connect"
 
 2. **Upload Documents:**
    - In the extension popup, drag and drop your personal documents
@@ -88,11 +92,13 @@ src/
 - **Vite** - Fast build tool and development server
 - **Tailwind CSS** - Utility-first CSS framework
 - **Chrome Extensions API** - Browser integration
+- **Anthropic Claude API** - Advanced AI for form filling (default)
+- **Google Gemini API** - Alternative AI provider
 
 ## Privacy & Security
 
 - API keys are stored locally in Chrome's sync storage
-- Documents are processed locally and sent only to Google's Gemini API
+- Documents are processed locally and sent only to your chosen AI provider (Claude or Gemini)
 - No data is stored on external servers
 - Follows Chrome extension security best practices
 
@@ -105,8 +111,10 @@ src/
    - Try refreshing the page and analyzing again
 
 2. **"API key error"**
-   - Verify your Gemini API key is correct
+   - Verify your API key is correct for the selected provider
    - Check that your API key has proper permissions
+   - For Claude: Ensure you have credits available
+   - For Gemini: Check API quota and billing
 
 3. **Forms not filling**
    - Ensure you have uploaded relevant documents

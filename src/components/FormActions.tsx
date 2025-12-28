@@ -10,6 +10,7 @@ interface FormActionsProps {
 
 export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiKey }: FormActionsProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [contentScriptStatus, setContentScriptStatus] = useState<'unknown' | 'loaded' | 'failed'>('unknown');
 
   const handleAnalyzeAndFill = async () => {
     setIsProcessing(true);
@@ -17,20 +18,87 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (tab.id) {
-        // First analyze forms
-        await chrome.tabs.sendMessage(tab.id, { action: 'ANALYZE_FORMS' });
-
-        // Small delay to ensure analysis completes
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Then fill forms
-        await chrome.tabs.sendMessage(tab.id, { action: 'FILL_FORMS' });
+      if (!tab.id) {
+        alert('No active tab found. Please refresh the page and try again.');
+        return;
       }
+
+      // Helper function to check if content script is loaded
+      const checkContentScript = async (tabId: number) => {
+        try {
+          await chrome.tabs.sendMessage(tabId, { action: 'PING' });
+          console.log('Content script is loaded and responding');
+          return true;
+        } catch (error) {
+          console.log('Content script not responding:', error);
+          return false;
+        }
+      };
+
+      // Helper function to inject content script if needed
+      const ensureContentScript = async (tabId: number) => {
+        const isLoaded = await checkContentScript(tabId);
+        
+        if (!isLoaded) {
+          try {
+            console.log('Attempting to inject content script...');
+            // Try to inject the content script
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              files: ['content.js']
+            });
+            
+            // Wait a bit for the script to initialize
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Check again
+            const isNowLoaded = await checkContentScript(tabId);
+            console.log('Content script loaded after injection:', isNowLoaded);
+            if (!isNowLoaded) {
+              throw new Error('Failed to load content script. Please refresh the page and try again.');
+            }
+          } catch (error) {
+            console.error('Content script injection failed:', error);
+            throw new Error('Unable to inject content script. Please refresh the page and try again.');
+          }
+        }
+      };
+
+      // Ensure content script is loaded
+      await ensureContentScript(tab.id);
+      setContentScriptStatus('loaded');
+
+      console.log('📡 Triggering form fill in all frames...');
+
+      // Use executeScript to run in all frames (main + iframes)
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: true },
+        func: () => {
+          // This runs in each frame (main page AND all iframes)
+          window.postMessage({ type: 'PREFILLER_FILL_FORMS' }, '*');
+        }
+      });
+
+      console.log('✅ Fill command sent to all frames');
     } catch (error) {
       console.error('Error processing forms:', error);
+      setContentScriptStatus('failed');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Error: ${errorMessage}`);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleRefreshPage = async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab.id) {
+        await chrome.tabs.reload(tab.id);
+        setContentScriptStatus('unknown');
+      }
+    } catch (error) {
+      console.error('Error refreshing page:', error);
     }
   };
 
@@ -101,6 +169,23 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
             <div className="w-4 h-4 border-2 border-gray-800 border-t-transparent rounded-full animate-spin"></div>
           )}
         </button>
+
+        {/* Content Script Status & Refresh Button */}
+        {contentScriptStatus === 'failed' && (
+          <div className="space-y-3">
+            <div className="error-box">
+              <span className="material-symbols-outlined">error</span>
+              <span>Content script failed to load. This may happen on some websites with strict security policies.</span>
+            </div>
+            <button
+              onClick={handleRefreshPage}
+              className="gemini-button secondary w-full"
+            >
+              <span className="material-symbols-outlined">refresh</span>
+              <span>Refresh Page & Try Again</span>
+            </button>
+          </div>
+        )}
 
         {/* Instructions */}
         {canUseFeatures ? (

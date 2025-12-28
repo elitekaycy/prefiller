@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Prefiller",
   "version": "1.0.0",
-  "description": "AI-powered form filling extension using Google Gemini API",
+  "description": "AI-powered form filling extension using Google Gemini or Anthropic Claude API",
   "permissions": [
     "activeTab",
     "storage",
@@ -14,7 +14,10 @@
     "<all_urls>",
     "https://aistudio.google.com/*",
     "https://makersuite.google.com/*",
-    "https://accounts.google.com/*"
+    "https://accounts.google.com/*",
+    "https://api.anthropic.com/*",
+    "https://console.anthropic.com/*",
+    "https://api.groq.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -22,7 +25,9 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_end",
+      "all_frames": true
     }
   ],
   "action": {
@@ -35,5 +40,11 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["pdf.worker.min.mjs"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

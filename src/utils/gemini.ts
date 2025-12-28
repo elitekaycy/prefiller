@@ -48,6 +48,33 @@ export class GeminiAPI {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API Error Response:', errorText);
+
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error?.message) {
+          const errorMessage = errorData.error.message;
+
+          // Handle specific Gemini API errors with user-friendly messages
+          if (errorMessage.includes('API_KEY_INVALID')) {
+            throw new Error('Invalid Gemini API key. Please check your key at https://aistudio.google.com/app/apikey');
+          } else if (errorMessage.includes('PERMISSION_DENIED')) {
+            throw new Error('Permission denied. Please ensure your Gemini API key has the correct permissions.');
+          } else if (errorMessage.includes('RESOURCE_EXHAUSTED')) {
+            throw new Error('⚠️ Gemini API quota exceeded. Please check your usage limits.');
+          } else {
+            throw new Error(`Gemini API Error: ${errorMessage}`);
+          }
+        }
+      } catch (parseError) {
+        // Re-throw if it's already a user-friendly error
+        if (parseError instanceof Error && parseError.message.includes('Gemini API')) {
+          throw parseError;
+        }
+        // If parsing fails, use the status text
+      }
+
       throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
     }
 
@@ -131,11 +158,73 @@ Your responses:`;
 
   async testConnection(): Promise<boolean> {
     try {
-      await this.generateContent('Test connection. Respond with "OK".');
-      return true;
+      console.log('Testing Gemini API connection...');
+
+      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: 'Test'
+            }]
+          }],
+          generationConfig: {
+            maxOutputTokens: 5
+          }
+        })
+      });
+
+      console.log('Gemini API response status:', response.status);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Gemini API response data:', data);
+        return !!(data.candidates && data.candidates.length > 0);
+      } else {
+        const errorText = await response.text();
+        console.error('Gemini API error response:', errorText);
+
+        // Parse error for better user feedback
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error?.message) {
+            // Handle specific Gemini API errors
+            if (errorData.error.message.includes('API_KEY_INVALID')) {
+              throw new Error('Invalid Gemini API key - please check your key at https://aistudio.google.com/app/apikey');
+            } else if (errorData.error.message.includes('PERMISSION_DENIED')) {
+              throw new Error('Permission denied - please ensure your Gemini API key has the correct permissions');
+            } else if (errorData.error.message.includes('RESOURCE_EXHAUSTED')) {
+              throw new Error('Gemini API quota exceeded - please check your usage limits');
+            } else {
+              throw new Error(`Gemini API Error: ${errorData.error.message}`);
+            }
+          }
+        } catch (parseError) {
+          if (parseError instanceof Error && parseError.message.startsWith('Gemini API Error:')) {
+            throw parseError;
+          }
+          // If we can't parse the error, use the status
+        }
+
+        // Common error messages based on status codes
+        if (response.status === 400) {
+          throw new Error('Invalid API key - please check your Gemini API key format');
+        } else if (response.status === 403) {
+          throw new Error('Access forbidden - your API key may not have the required permissions or may be invalid');
+        } else if (response.status === 429) {
+          throw new Error('Rate limit exceeded - please try again later');
+        } else if (response.status === 404) {
+          throw new Error('API endpoint not found - this may indicate an API key issue');
+        } else {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+      }
     } catch (error) {
       console.error('Gemini API connection test failed:', error);
-      return false;
+      throw error; // Re-throw so the UI can show the specific error
     }
   }
 }

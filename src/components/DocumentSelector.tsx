@@ -1,6 +1,8 @@
 import { useState } from 'preact/hooks';
 import { UploadedDocument } from '@/types';
 import { StorageManager } from '@/utils/storage';
+import { PDFParser } from '@/utils/pdfParser';
+import { DocumentParser } from '@/utils/documentParser';
 
 interface DocumentSelectorProps {
   documents: UploadedDocument[];
@@ -32,7 +34,20 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
         }
 
         try {
-          const content = await readFileAsText(file);
+          console.log(`\n📄 Processing file: ${file.name} (${file.type})`);
+
+          let content: string;
+
+          // Handle PDFs differently from text files
+          if (PDFParser.isPDF(file)) {
+            console.log(`📄 Parsing PDF: ${file.name}`);
+            content = await PDFParser.extractText(file);
+            console.log(`✅ PDF parsed: ${content.length} characters extracted`);
+          } else {
+            console.log(`📄 Reading text file: ${file.name}`);
+            content = await readFileAsText(file);
+            console.log(`✅ Text file read: ${content.length} characters`);
+          }
 
           // Validate document size
           const validation = StorageManager.validateDocumentSize(content, file.name);
@@ -41,17 +56,27 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
             continue;
           }
 
+          // Parse document for metadata
+          console.log(`\n🔍 Starting document parsing for ${file.name}...`);
+          const parseResult = await DocumentParser.parse(content, file.name);
+          console.log(`✅ Found: ${parseResult.emails.length} emails, ${parseResult.phones.length} phones, ${parseResult.names.length} names`);
+
           const document: UploadedDocument = {
             id: Date.now().toString() + i,
             name: file.name,
             content,
             type: file.type,
-            uploadedAt: Date.now()
+            uploadedAt: Date.now(),
+            parsed: parseResult,
+            parsedAt: Date.now(),
+            parsedBy: 'regex'
           };
           newDocuments.push(document);
+          console.log(`✅ Document processed and parsed: ${file.name}`);
         } catch (error) {
-          console.error(`Failed to read file ${file.name}:`, error);
-          errors.push(`Failed to read "${file.name}"`);
+          console.error(`❌ Failed to read file ${file.name}:`, error);
+          const errorMsg = error instanceof Error ? error.message : `Failed to read "${file.name}"`;
+          errors.push(errorMsg);
         }
       }
 

@@ -1,74 +1,179 @@
 import { FormField } from '@/types';
+import { FormScraper, FieldMetadata } from './scraper';
+import { AIService } from '@/utils/aiService';
+
+// Simple decoder for API key (matching the encoder in popup)
+class SimpleDecoder {
+  private static readonly SALT = 'prefiller-salt-2024';
+
+  static decode(encodedText: string): string {
+    try {
+      const decoded = atob(encodedText);
+      return decodeURIComponent(escape(decoded)).replace(this.SALT, '');
+    } catch (error) {
+      console.error('Failed to decode API key:', error);
+      return encodedText; // Return as-is if decoding fails
+    }
+  }
+}
 
 class FormAnalyzer {
   private detectedForms: FormField[] = [];
+  private scrapedFields: FieldMetadata[] = [];
+  private scraper: FormScraper;
+  private isTopFrame: boolean;
 
   constructor() {
+    this.scraper = new FormScraper();
+    this.isTopFrame = window.self === window.top;
+    console.log(`🚀 FormAnalyzer initialized in ${this.isTopFrame ? 'top frame' : 'iframe'}`);
+    console.log(`📍 Frame URL: ${window.location.href}`);
+    console.log(`📍 Frame origin: ${window.location.origin}`);
+
+    // Log all iframes if we're in the top frame
+    if (this.isTopFrame) {
+      const iframes = document.querySelectorAll('iframe');
+      console.log(`🔍 Found ${iframes.length} iframe(s) in top frame`);
+      iframes.forEach((iframe, index) => {
+        console.log(`  Iframe ${index + 1}: ${iframe.src || 'about:blank'}`);
+      });
+    }
+
     this.init();
+
+    // Listen for postMessage from executeScript (works across all frames)
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'PREFILLER_FILL_FORMS') {
+        console.log(`📨 Received PREFILLER_FILL_FORMS message in ${this.isTopFrame ? 'top frame' : 'iframe'}`);
+        // Re-scan and fill
+        this.analyzeFormsAsync().then(() => {
+          this.fillForms();
+        });
+      }
+    });
+
+    // Auto-analyze forms on load
+    this.analyzeFormsAsync();
   }
 
   private init() {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       switch (message.action) {
         case 'ANALYZE_FORMS':
-          this.analyzeForms();
-          sendResponse({ success: true, forms: this.detectedForms });
-          break;
+          this.analyzeFormsAsync().then(() => {
+            sendResponse({ success: true, forms: this.detectedForms });
+          });
+          return true; // Required for async response
         case 'FILL_FORMS':
-          this.fillForms();
-          sendResponse({ success: true });
-          break;
+          // Re-scan forms before filling to ensure we have the latest
+          this.analyzeFormsAsync().then(() => {
+            this.fillForms();
+            sendResponse({ success: true });
+          });
+          return true; // Required for async response
       }
     });
 
     this.observePageChanges();
   }
 
+  private analyzeFormsAsync(): Promise<void> {
+    return new Promise((resolve) => {
+      // Wait a bit for dynamic content to load
+      // Much longer delay for main page to allow iframes to fully load
+      // Shorter delay for iframes since they load after the parent
+      const delay = this.isTopFrame ? 5000 : 2000;
+
+      const frameContext = this.isTopFrame ? '(main page)' : '(iframe)';
+      console.log(`⏳ ${frameContext} Waiting ${delay}ms before scanning...`);
+
+      // If we're in top frame, log iframe count after delay
+      if (this.isTopFrame) {
+        setTimeout(() => {
+          const iframes = document.querySelectorAll('iframe');
+          console.log(`🔍 ${frameContext} After ${delay}ms, found ${iframes.length} iframe(s)`);
+        }, delay - 100);
+      }
+
+      setTimeout(() => {
+        console.log(`🔍 ${frameContext} Starting form scan now...`);
+
+        // Use the new scraper engine (skipFilled = false to detect all fields)
+        this.scrapedFields = this.scraper.scrapeFormFields(false);
+
+        // Convert to old format for backwards compatibility
+        this.detectedForms = this.scrapedFields.map(field => ({
+          element: field.element,
+          type: field.type,
+          label: field.label,
+          placeholder: field.placeholder,
+          required: field.required,
+          description: field.description
+        }));
+
+        this.highlightDetectedFields();
+
+        console.log(`✅ ${frameContext} Analyzed ${this.scrapedFields.length} form fields with comprehensive metadata`);
+
+        if (this.scrapedFields.length > 0) {
+          console.log(`📋 ${frameContext} Field summary:`, this.scrapedFields.map(f => ({
+            label: f.label,
+            type: f.type,
+            name: f.name
+          })));
+        }
+
+        resolve();
+      }, delay);
+    });
+  }
+
   private observePageChanges() {
-    const observer = new MutationObserver(() => {
-      this.analyzeForms();
+    // Watch for DOM changes including dynamically added iframes
+    const observer = new MutationObserver((mutations) => {
+      let shouldRescan = false;
+
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element;
+
+            // Check if an iframe was added
+            if (element.tagName === 'IFRAME') {
+              console.log(`🎯 [${this.isTopFrame ? 'main page' : 'iframe'}] New iframe detected:`, element);
+              shouldRescan = true;
+            }
+
+            // Check if any descendant iframes were added
+            if (element.querySelectorAll && element.querySelectorAll('iframe').length > 0) {
+              console.log(`🎯 [${this.isTopFrame ? 'main page' : 'iframe'}] Element with iframes added:`, element);
+              shouldRescan = true;
+            }
+
+            // Check if form fields were added
+            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
+              shouldRescan = true;
+            }
+          }
+        });
+      });
+
+      if (shouldRescan) {
+        console.log('📡 DOM changed, rescanning for forms...');
+        this.analyzeFormsAsync();
+      }
     });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true
     });
-  }
 
-  private analyzeForms() {
-    this.detectedForms = [];
-
-    const formSelectors = [
-      'input[type="text"]',
-      'input[type="email"]',
-      'input[type="tel"]',
-      'input[type="url"]',
-      'input[type="password"]',
-      'input[type="search"]',
-      'input[type="date"]',
-      'input[type="datetime-local"]',
-      'input[type="month"]',
-      'input[type="week"]',
-      'input[type="time"]',
-      'input[type="number"]',
-      'input:not([type])', // inputs without type attribute default to text
-      'textarea',
-      'select'
-    ];
-
-    const elements = document.querySelectorAll(formSelectors.join(', '));
-
-    elements.forEach((element) => {
-      if (this.isVisible(element as HTMLElement)) {
-        const formField = this.extractFieldInfo(element as HTMLElement);
-        if (formField) {
-          this.detectedForms.push(formField);
-        }
-      }
-    });
-
-    this.highlightDetectedFields();
-    console.log(`Detected ${this.detectedForms.length} form fields`, this.detectedForms);
+    // Also log any iframes that exist now
+    const existingIframes = document.querySelectorAll('iframe');
+    if (existingIframes.length > 0) {
+      console.log(`📋 Found ${existingIframes.length} existing iframe(s) in ${this.isTopFrame ? 'main page' : 'iframe'}:`, existingIframes);
+    }
   }
 
   private isVisible(element: HTMLElement): boolean {
@@ -198,30 +303,103 @@ class FormAnalyzer {
   }
 
   private async fillForms() {
-    const settings = await this.getSettings();
-
-    if (!settings.apiKey) {
-      this.showNotification('Please configure your Gemini API key first!', 'error');
-      return;
-    }
-
-    if (this.detectedForms.length === 0) {
-      this.showNotification('No forms detected on this page.', 'error');
-      return;
-    }
-
-    this.showNotification(`🔍 Analyzing ${this.detectedForms.length} form fields...`, 'loading');
+    const frameContext = this.isTopFrame ? '(main page)' : '(iframe)';
+    console.log(`🔧 [${frameContext}] fillForms called, scrapedFields count:`, this.scrapedFields.length);
 
     try {
-      const context = this.buildContext(settings);
+      const settings = await this.getSettings();
+      console.log(`⚙️ [${frameContext}] Settings loaded:`, {
+        aiProvider: settings.aiProvider,
+        hasApiKey: !!settings.apiKey,
+        documentsCount: settings.documents?.length || 0
+      });
 
-      this.showNotification('🤖 Generating responses with AI...', 'loading');
-      const responses = await this.getAIResponses(context, settings.apiKey);
+      if (!settings.aiProvider) {
+        console.error(`❌ [${frameContext}] No AI provider configured`);
+        this.showNotification('Please configure your AI provider first!', 'error');
+        return;
+      }
+
+      // Chrome AI doesn't need an API key
+      if (settings.aiProvider !== 'chromeai' && !settings.apiKey) {
+        console.error(`❌ [${frameContext}] No API key for provider: ${settings.aiProvider}`);
+        this.showNotification('Please configure your API key first!', 'error');
+        return;
+      }
+
+      // Check if documents are uploaded
+      if (!settings.documents || settings.documents.length === 0) {
+        console.error(`❌ [${frameContext}] No documents uploaded`);
+        this.showNotification('Please upload your CV/resume in the Documents step first!', 'error');
+        return;
+      }
+
+      // Decode the API key if it's encoded (not needed for Chrome AI)
+      const decodedApiKey = settings.apiKey ? SimpleDecoder.decode(settings.apiKey) : '';
+
+      if (this.scrapedFields.length === 0) {
+        console.log(`⚠️ [${frameContext}] No forms detected, skipping fill`);
+        // Only show error in top frame to avoid duplicate notifications
+        if (this.isTopFrame) {
+          this.showNotification('No forms detected on this page.', 'error');
+        }
+        return;
+      }
+
+      console.log(`✅ [${frameContext}] Starting to fill ${this.scrapedFields.length} fields`);
+
+      this.showNotification(`🔍 Analyzing ${this.scrapedFields.length} form fields...`, 'loading');
+
+      // Build personal information context
+      let personalInfo = 'Personal Information:\n';
+      console.log(`📄 [${frameContext}] Processing ${settings.documents.length} document(s)...`);
+
+      settings.documents.forEach((doc: any, index: number) => {
+        const preview = doc.content.substring(0, 200);
+        console.log(`📄 [${frameContext}] Document ${index + 1}: "${doc.name}" - ${doc.content.length} chars`);
+        console.log(`📄 [${frameContext}] Preview: "${preview}..."`);
+        personalInfo += `\n${doc.name}:\n${doc.content}\n`;
+      });
+
+      console.log(`📋 [${frameContext}] Total personal info length: ${personalInfo.length} chars`);
+
+      // Build AI prompt using scraper engine
+      const prompt = this.scraper.buildAIPrompt(this.scrapedFields, personalInfo);
+      console.log(`📝 [${frameContext}] AI Prompt built, length:`, prompt.length);
+
+      const providerName = AIService.getProviderName(settings.aiProvider);
+      this.showNotification(`🤖 Generating responses with ${providerName}...`, 'loading');
+      console.log(`🤖 [${frameContext}] Calling ${providerName} API...`);
+
+      // Use the unified AI service
+      const aiService = new AIService(settings.aiProvider, decodedApiKey);
+      console.log(`🔌 [${frameContext}] AI Service created for ${settings.aiProvider}`);
+
+      const responses = await this.getAIResponses(aiService, prompt);
+      console.log(`✅ [${frameContext}] AI responses received:`, responses.length, 'responses');
 
       this.showNotification('✨ Filling form fields...', 'loading');
-      this.applyResponses(responses);
 
-      this.showNotification(`✅ Successfully filled ${responses.filter(r => r).length} fields!`, 'success');
+      console.log(`🎯 [${frameContext}] About to fill fields. Responses:`, responses);
+      console.log(`📊 [${frameContext}] Response count: ${responses.length}, Field count: ${this.scrapedFields.length}`);
+
+      // Use scraper engine to fill fields intelligently
+      const filledCount = this.scraper.fillFields(this.scrapedFields, responses);
+
+      console.log(`✅ [${frameContext}] Filled ${filledCount} fields successfully`);
+
+      // Add visual indicators
+      let visualCount = 0;
+      this.scrapedFields.forEach((field, index) => {
+        if (index < responses.length && responses[index] && responses[index] !== '[SKIP]') {
+          field.element.classList.add('prefiller-filled');
+          visualCount++;
+        }
+      });
+
+      console.log(`🎨 [${frameContext}] Added visual indicators to ${visualCount} fields`);
+
+      this.showNotification(`✅ Successfully filled ${filledCount} out of ${this.scrapedFields.length} fields!`, 'success');
     } catch (error) {
       console.error('Error filling forms:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -229,10 +407,10 @@ class FormAnalyzer {
     }
   }
 
-  private async getSettings() {
+  private async getSettings(): Promise<any> {
     return new Promise((resolve) => {
       chrome.storage.local.get(['settings'], (result) => {
-        resolve(result.settings || { apiKey: '', documents: [], isEnabled: true });
+        resolve(result.settings || { aiProvider: 'claude', apiKey: '', documents: [], isEnabled: true });
       });
     });
   }
@@ -259,81 +437,49 @@ class FormAnalyzer {
     return context;
   }
 
-  private async getAIResponses(context: string, apiKey: string): Promise<string[]> {
-    const prompt = `
-      Based on the personal information provided and the form fields listed, generate appropriate responses for each field.
+  private async getAIResponses(aiService: AIService, prompt: string): Promise<string[]> {
+    const frameContext = this.isTopFrame ? '(main page)' : '(iframe)';
+    console.log(`🤖 [${frameContext}] Sending prompt to AI (${prompt.length} chars)...`);
+    console.log(`🤖 [${frameContext}] Full prompt:`, prompt);
 
-      ${context}
+    try {
+      const response = await aiService.generateContent(prompt);
 
-      Please provide responses in the following format:
-      1. [Response for field 1]
-      2. [Response for field 2]
-      3. [Response for field 3]
-      etc.
+      console.log(`📥 [${frameContext}] Raw AI response received (${response.length} chars):`);
+      console.log(`📥 [${frameContext}] Response text:`, response);
 
-      Guidelines:
-      - Use the personal information to provide accurate, relevant responses
-      - Keep responses concise and appropriate for form fields
-      - For email fields, use a professional email format
-      - For phone numbers, use a standard format
-      - For dates, use MM/DD/YYYY format
-      - If you don't have enough information for a field, respond with "[SKIP]"
-    `;
+      const parsedResponses = this.parseAIResponse(response);
+      console.log(`📋 [${frameContext}] Parsed ${parsedResponses.length} responses from AI output`);
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Response:', errorText);
-
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.error?.message) {
-          throw new Error(`API Error: ${errorData.error.message}`);
-        }
-      } catch (e) {
-        // If parsing fails, use the status text
-      }
-
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      return parsedResponses;
+    } catch (error) {
+      console.error(`❌ [${frameContext}] AI API call failed:`, error);
+      console.error(`❌ [${frameContext}] Error details:`, error instanceof Error ? error.message : String(error));
+      throw error; // Re-throw to be caught by fillForms
     }
-
-    const data = await response.json();
-
-    // Validate response structure
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
-      console.error('Invalid API response structure:', data);
-      throw new Error('Invalid response from Gemini API. Please check your API key and try again.');
-    }
-
-    const text = data.candidates[0].content.parts[0].text;
-
-    return this.parseAIResponse(text);
   }
 
   private parseAIResponse(text: string): string[] {
+    const frameContext = this.isTopFrame ? '(main page)' : '(iframe)';
     const lines = text.split('\n').filter(line => line.trim());
     const responses: string[] = [];
 
-    lines.forEach(line => {
+    console.log(`🔍 [${frameContext}] Parsing AI response, found ${lines.length} non-empty lines`);
+
+    lines.forEach((line, idx) => {
       const match = line.match(/^\d+\.\s*(.+)$/);
       if (match) {
         const response = match[1].trim();
-        responses.push(response === '[SKIP]' ? '' : response);
+        const finalResponse = response === '[SKIP]' ? '' : response;
+        responses.push(finalResponse);
+        console.log(`✓ [${frameContext}] Line ${idx}: Matched field response: "${finalResponse}"`);
+      } else {
+        console.log(`⊘ [${frameContext}] Line ${idx}: No match for: "${line.substring(0, 80)}..."`);
       }
     });
+
+    console.log(`📊 [${frameContext}] Parse complete: ${responses.length} field responses extracted`);
+    console.log(`📊 [${frameContext}] Responses:`, responses);
 
     return responses;
   }
@@ -370,6 +516,12 @@ class FormAnalyzer {
   }
 
   private showNotification(message: string, type: 'loading' | 'success' | 'error' = 'loading') {
+    // Only show notifications in the top frame to avoid duplicates
+    if (!this.isTopFrame) {
+      console.log(`[iframe] ${message}`);
+      return;
+    }
+
     const existing = document.getElementById('prefiller-notification');
     if (existing) {
       existing.remove();

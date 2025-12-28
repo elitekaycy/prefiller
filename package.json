@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp manifest.json dist/ && cp -r public/icons dist/ && cp dist/src/popup/index.html dist/popup.html",
+    "build": "vite build && cp manifest.json dist/ && cp -r public/icons dist/ && cp public/pdf.worker.min.mjs dist/ && cp dist/src/popup/index.html dist/popup.html",
     "preview": "vite preview"
   },
   "dependencies": {
+    "pdfjs-dist": "^5.4.530",
     "preact": "^10.19.3"
   },
   "devDependencies": {

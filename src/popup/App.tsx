@@ -1,37 +1,61 @@
 import { useState, useEffect } from 'preact/hooks';
-import { GeminiSetup } from '@/components/GeminiSetup';
+import { AISetup } from '@/components/AISetup';
 import { DocumentSelector } from '@/components/DocumentSelector';
 import { FormActions } from '@/components/FormActions';
-import { ExtensionSettings } from '@/types';
+import { ExtensionSettings, AIProvider } from '@/types';
 import { EncryptionUtil } from '@/utils/encryption';
+import { ChromeAI } from '@/utils/chromeai';
 
 type AppStep = 'setup' | 'documents' | 'actions';
 
 export function App() {
   const [currentStep, setCurrentStep] = useState<AppStep>('setup');
   const [settings, setSettings] = useState<ExtensionSettings>({
+    aiProvider: 'claude',
     apiKey: '',
     documents: [],
     isEnabled: true
   });
 
   useEffect(() => {
-    chrome.storage.local.get(['settings'], (result) => {
-      if (result.settings) {
-        const decoded = { ...result.settings };
-        if (decoded.apiKey) {
-          decoded.apiKey = EncryptionUtil.decode(decoded.apiKey);
-        }
-        setSettings(decoded);
+    // Check if Chrome AI is available and set as default
+    // Preference: Chrome AI (free, local) > Groq (free, fast) > Gemini (free tier)
+    const initializeDefaultProvider = async () => {
+      const chromeAIAvailable = await ChromeAI.isAvailable();
+      const defaultProvider: AIProvider = chromeAIAvailable ? 'chromeai' : 'groq';
 
-        // Determine initial step based on existing data
-        if (decoded.apiKey && EncryptionUtil.isValidApiKey(decoded.apiKey)) {
-          setCurrentStep('documents');
+      chrome.storage.local.get(['settings'], (result) => {
+        if (result.settings) {
+          const decoded = { ...result.settings };
+          if (decoded.apiKey) {
+            decoded.apiKey = EncryptionUtil.decode(decoded.apiKey);
+          }
+          setSettings(decoded);
+
+          // Determine initial step based on existing data
+          // Chrome AI doesn't need API key, so check differently
+          const hasValidSetup = decoded.aiProvider === 'chromeai'
+            ? true
+            : (decoded.apiKey && decoded.aiProvider);
+
+          if (hasValidSetup) {
+            setCurrentStep('documents');
+          } else {
+            setCurrentStep('setup');
+          }
         } else {
-          setCurrentStep('setup');
+          // No settings exist, use default provider
+          setSettings({
+            aiProvider: defaultProvider,
+            apiKey: '',
+            documents: [],
+            isEnabled: true
+          });
         }
-      }
-    });
+      });
+    };
+
+    initializeDefaultProvider();
   }, []);
 
   const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
@@ -75,8 +99,10 @@ export function App() {
     switch (currentStep) {
       case 'setup':
         return (
-          <GeminiSetup
+          <AISetup
+            aiProvider={settings.aiProvider}
             apiKey={settings.apiKey}
+            onProviderChange={(aiProvider) => updateSettings({ aiProvider })}
             onApiKeyChange={(apiKey) => updateSettings({ apiKey })}
             onComplete={() => handleStepComplete('setup')}
           />
