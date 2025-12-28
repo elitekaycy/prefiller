@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { UploadedDocument } from '@/types';
-import { PDFParser } from '@/utils/pdfParser';
-import { DocumentParser, ParsedDocumentData } from '@/utils/documentParser';
+import { DocumentParserFactory } from '@/utils/parsers/ParserFactory';
+import { CacheManager, StorageManager } from '@/storage';
 
 interface DocumentUploadProps {
   documents: UploadedDocument[];
@@ -20,37 +20,35 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
     const newDocuments: UploadedDocument[] = [];
 
     try {
-      // Get settings for AI parsing
-      const settings = await getSettings();
-
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setParsingStatus(`Processing ${file.name}...`);
-        console.log(`\n📄 Processing file: ${file.name} (${file.type})`);
-
-        let content: string;
-
-        // Handle PDFs differently from text files
-        if (PDFParser.isPDF(file)) {
-          setParsingStatus(`Extracting text from PDF: ${file.name}...`);
-          console.log(`📄 Parsing PDF: ${file.name}`);
-          content = await PDFParser.extractText(file);
-          console.log(`✅ PDF parsed: ${content.length} characters extracted`);
-        } else {
-          setParsingStatus(`Reading text file: ${file.name}...`);
-          console.log(`📄 Reading text file: ${file.name}`);
-          content = await readFileAsText(file);
-          console.log(`✅ Text file read: ${content.length} characters`);
-        }
 
         const documentId = Date.now().toString() + i;
 
-        // Parse document in background (AI first, fallback to regex)
-        setParsingStatus(`Analyzing document structure: ${file.name}...`);
-        console.log(`\n🔍 Starting background parsing for ${file.name}...`);
-        const parseResult = await DocumentParser.parse(content, file.name);
+        // Check if we have cached parsed data for this file
+        const cached = await CacheManager.getParsedDocument(documentId);
 
-        setParsingStatus(`✅ Found: ${parseResult.emails.length} emails, ${parseResult.phones.length} phones, ${parseResult.names.length} names`);
+        let parsedData;
+        if (cached) {
+          setParsingStatus(`Using cached data for ${file.name}...`);
+          parsedData = cached;
+        } else {
+          // Parse document using new parser factory
+          setParsingStatus(`Parsing ${file.name}...`);
+          parsedData = await DocumentParserFactory.parse(file);
+
+          // Cache the parsed data
+          await CacheManager.setParsedDocument(documentId, parsedData);
+        }
+
+        setParsingStatus(
+          `✅ Found: ${parsedData.emails.length} emails, ${parsedData.phones.length} phones` +
+          (parsedData.education?.length ? `, ${parsedData.education.length} education entries` : '')
+        );
+
+        // Read file content for storage
+        const content = await readFileContent(file);
 
         const document: UploadedDocument = {
           id: documentId,
@@ -58,43 +56,39 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
           content,
           type: file.type,
           uploadedAt: Date.now(),
-          parsed: parseResult,
+          parsedData,
           parsedAt: Date.now(),
-          parsedBy: 'regex' // We'll add AI parsing next
+          parsedBy: 'parser',
         };
 
         newDocuments.push(document);
-        console.log(`✅ Document processed and parsed: ${file.name}`);
       }
 
       onDocumentsChange([...documents, ...newDocuments]);
-      console.log(`\n✅ Successfully uploaded and parsed ${newDocuments.length} document(s)`);
 
       // Clear status after a delay
       setTimeout(() => setParsingStatus(''), 3000);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to process document';
       setError(errorMsg);
-      console.error('Document upload error:', err);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const getSettings = async (): Promise<any> => {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['settings'], (result) => {
-        resolve(result.settings || {});
-      });
-    });
-  };
-
-  const readFileAsText = (file: File): Promise<string> => {
+  const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target?.result as string);
       reader.onerror = reject;
-      reader.readAsText(file);
+
+      // For binary files (like PDFs), read as text anyway for storage
+      // The parser already extracted the actual text
+      if (file.type === 'application/pdf') {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsText(file);
+      }
     });
   };
 

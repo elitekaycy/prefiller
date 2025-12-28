@@ -1,3 +1,5 @@
+import { StorageMigration, StorageManager } from '@/storage';
+
 chrome.runtime.onInstalled.addListener(async () => {
   // Enable side panel behavior
   try {
@@ -6,33 +8,16 @@ chrome.runtime.onInstalled.addListener(async () => {
     // Silent fail - side panel may not be available in all environments
   }
 
-  chrome.storage.local.get(['settings'], (result) => {
-    if (!result.settings) {
-      chrome.storage.local.set({
-        settings: {
-          apiKey: '',
-          documents: [],
-          isEnabled: true
-        }
-      });
-    }
-  });
+  // Run storage migration on install/update
+  try {
+    await StorageMigration.autoMigrate();
+  } catch (error) {
+    // Silent fail - migration errors shouldn't break installation
+  }
 });
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
   switch (message.action) {
-    case 'GET_SETTINGS':
-      chrome.storage.local.get(['settings'], (result) => {
-        sendResponse(result.settings);
-      });
-      return true;
-
-    case 'SAVE_SETTINGS':
-      chrome.storage.local.set({ settings: message.settings }, () => {
-        sendResponse({ success: true });
-      });
-      return true;
-
     case 'ANALYZE_PAGE':
       if (sender.tab?.id) {
         chrome.tabs.sendMessage(sender.tab.id, { action: 'ANALYZE_FORMS' });
@@ -47,14 +32,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
-    chrome.storage.local.get(['settings'], (result) => {
-      if (result.settings?.isEnabled) {
+    try {
+      const isEnabled = await StorageManager.getIsEnabled();
+      if (isEnabled) {
         setTimeout(() => {
           chrome.tabs.sendMessage(tabId, { action: 'ANALYZE_FORMS' });
         }, 1000);
       }
-    });
+    } catch (error) {
+      // Silent fail
+    }
   }
 });

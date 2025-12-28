@@ -5,6 +5,7 @@ import { FormActions } from '@/components/FormActions';
 import { ExtensionSettings, AIProvider } from '@/types';
 import { EncryptionUtil } from '@/utils/encryption';
 import { ChromeAI } from '@/utils/chromeai';
+import { StorageManager, StorageMigration } from '@/storage';
 
 type AppStep = 'setup' | 'documents' | 'actions';
 
@@ -21,38 +22,54 @@ export function App() {
     // Check if Chrome AI is available and set as default
     // Preference: Chrome AI (free, local) > Groq (free, fast) > Gemini (free tier)
     const initializeDefaultProvider = async () => {
-      const chromeAIAvailable = await ChromeAI.isAvailable();
-      const defaultProvider: AIProvider = chromeAIAvailable ? 'chromeai' : 'groq';
+      try {
+        // Run migration first
+        await StorageMigration.autoMigrate();
 
-      chrome.storage.local.get(['settings'], (result) => {
-        if (result.settings) {
-          const decoded = { ...result.settings };
-          if (decoded.apiKey) {
-            decoded.apiKey = EncryptionUtil.decode(decoded.apiKey);
-          }
-          setSettings(decoded);
+        const chromeAIAvailable = await ChromeAI.isAvailable();
+        const defaultProvider: AIProvider = chromeAIAvailable ? 'chromeai' : 'groq';
 
-          // Determine initial step based on existing data
-          // Chrome AI doesn't need API key, so check differently
-          const hasValidSetup = decoded.aiProvider === 'chromeai'
-            ? true
-            : (decoded.apiKey && decoded.aiProvider);
+        // Load settings from new storage structure
+        const aiProvider = await StorageManager.getAIProvider() || defaultProvider;
+        const isEnabled = await StorageManager.getIsEnabled();
+        const documents = await StorageManager.getDocuments();
 
-          if (hasValidSetup) {
-            setCurrentStep('documents');
-          } else {
-            setCurrentStep('setup');
-          }
+        // Load API key for current provider
+        const apiKey = await StorageManager.getApiKey(aiProvider);
+        const decodedApiKey = apiKey ? EncryptionUtil.decode(apiKey) : '';
+
+        const loadedSettings: ExtensionSettings = {
+          aiProvider,
+          apiKey: decodedApiKey,
+          documents,
+          isEnabled,
+        };
+
+        setSettings(loadedSettings);
+
+        // Determine initial step based on existing data
+        // Chrome AI doesn't need API key, so check differently
+        const hasValidSetup = aiProvider === 'chromeai'
+          ? true
+          : (decodedApiKey && aiProvider);
+
+        if (hasValidSetup) {
+          setCurrentStep('documents');
         } else {
-          // No settings exist, use default provider
-          setSettings({
-            aiProvider: defaultProvider,
-            apiKey: '',
-            documents: [],
-            isEnabled: true
-          });
+          setCurrentStep('setup');
         }
-      });
+      } catch (error) {
+        // Fallback to defaults if loading fails
+        const chromeAIAvailable = await ChromeAI.isAvailable();
+        const defaultProvider: AIProvider = chromeAIAvailable ? 'chromeai' : 'groq';
+
+        setSettings({
+          aiProvider: defaultProvider,
+          apiKey: '',
+          documents: [],
+          isEnabled: true
+        });
+      }
     };
 
     initializeDefaultProvider();
@@ -62,22 +79,43 @@ export function App() {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
 
-    // Encode API key before storing
-    const toStore = { ...updated };
-    if (toStore.apiKey) {
-      toStore.apiKey = EncryptionUtil.encode(toStore.apiKey);
-    }
-
     try {
-      await new Promise<void>((resolve, reject) => {
-        chrome.storage.local.set({ settings: toStore }, () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve();
-          }
-        });
-      });
+      // Save AI provider if changed
+      if (newSettings.aiProvider !== undefined) {
+        await StorageManager.setAIProvider(newSettings.aiProvider);
+
+        // If provider changed, load that provider's API key
+        if (newSettings.aiProvider !== settings.aiProvider) {
+          const providerKey = await StorageManager.getApiKey(newSettings.aiProvider);
+          updated.apiKey = providerKey ? EncryptionUtil.decode(providerKey) : '';
+          setSettings(updated);
+        }
+      }
+
+      // Save API key if changed (for current provider)
+      if (newSettings.apiKey !== undefined) {
+        const encodedKey = EncryptionUtil.encode(newSettings.apiKey);
+        await StorageManager.setApiKey(updated.aiProvider, encodedKey);
+      }
+
+      // Save documents if changed
+      if (newSettings.documents !== undefined) {
+        // Clear existing documents
+        const existingDocs = await StorageManager.getDocuments();
+        for (const doc of existingDocs) {
+          await StorageManager.removeDocument(doc.id);
+        }
+
+        // Add new documents
+        for (const doc of newSettings.documents) {
+          await StorageManager.addDocument(doc);
+        }
+      }
+
+      // Save enabled state if changed
+      if (newSettings.isEnabled !== undefined) {
+        await StorageManager.setIsEnabled(newSettings.isEnabled);
+      }
     } catch (error) {
       alert(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

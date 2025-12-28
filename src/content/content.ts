@@ -3,6 +3,7 @@ import { FormScraper, FieldMetadata } from './scraper';
 import { AIService } from '@/utils/aiService';
 import { EncryptionUtil } from '@/utils/encryption';
 import { TIMEOUTS, COLORS } from '@/config/constants';
+import { StorageManager } from '@/storage';
 
 class FormAnalyzer {
   private detectedForms: FormField[] = [];
@@ -323,11 +324,30 @@ class FormAnalyzer {
   }
 
   private async getSettings(): Promise<ExtensionSettings> {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['settings'], (result) => {
-        resolve(result.settings || { aiProvider: 'claude', apiKey: '', documents: [], isEnabled: true });
-      });
-    });
+    try {
+      const aiProvider = await StorageManager.getAIProvider() || 'claude';
+      const isEnabled = await StorageManager.getIsEnabled();
+      const documents = await StorageManager.getDocuments();
+
+      // Load API key for current provider
+      const apiKey = await StorageManager.getApiKey(aiProvider);
+      const decodedApiKey = apiKey ? EncryptionUtil.decode(apiKey) : '';
+
+      return {
+        aiProvider,
+        apiKey: decodedApiKey,
+        documents,
+        isEnabled,
+      };
+    } catch (error) {
+      // Fallback to defaults if loading fails
+      return {
+        aiProvider: 'claude',
+        apiKey: '',
+        documents: [],
+        isEnabled: true,
+      };
+    }
   }
 
   private buildContext(settings: ExtensionSettings): string {
