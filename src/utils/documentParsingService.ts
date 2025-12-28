@@ -1,114 +1,136 @@
 /**
  * Hybrid Document Parsing Service
- * - Tries AI parsing first (better quality, flexible)
- * - Falls back to regex-based parser if AI fails/unavailable
+ * - Uses appropriate parser based on file type (PDF, TXT, DOCX)
+ * - Optionally enhances with AI parsing for better quality
  * - Caches results in localStorage
  * - Returns unified format
  */
 
-import { DocumentParser, ParsedDocumentData } from './documentParser';
+import { ParsedDocumentData } from '@/types';
+import { DocumentParserFactory } from './parsers/ParserFactory';
 import { AIService } from './aiService';
 import type { AIProvider } from '@/types';
 
 export class DocumentParsingService {
   /**
-   * Parse document with AI first, fallback to regex parser
+   * Parse document using appropriate parser based on file type
    */
   static async parseDocument(
-    content: string,
-    fileName: string,
+    file: File,
     aiProvider?: AIProvider,
     apiKey?: string
-  ): Promise<{ data: ParsedDocumentData; method: 'ai' | 'regex' }> {
-    console.log(`\n🚀 [ParsingService] Starting hybrid parsing for: ${fileName}`);
-    console.log(`📊 [ParsingService] Content length: ${content.length} chars`);
+  ): Promise<{ data: ParsedDocumentData; method: 'parser' | 'ai-enhanced' }> {
+    try {
+      // Use appropriate parser based on file type
+      const parsed = await DocumentParserFactory.parse(file);
 
-    // Try AI parsing first if provider and key available
-    if (aiProvider && apiKey && aiProvider !== 'chromeai') {
-      console.log(`🤖 [ParsingService] Attempting AI parsing with ${aiProvider}...`);
-
-      try {
-        const parsed = await this.parseWithAI(content, fileName, aiProvider, apiKey);
-        console.log(`✅ [ParsingService] AI parsing successful!`);
-        return { data: parsed, method: 'ai' };
-      } catch (error) {
-        console.warn(`⚠️ [ParsingService] AI parsing failed:`, error);
-        console.log(`🔄 [ParsingService] Falling back to regex parser...`);
+      // Optionally enhance with AI if available and confidence is low
+      if (aiProvider && apiKey && aiProvider !== 'chromeai' && this.shouldEnhanceWithAI(parsed)) {
+        try {
+          const enhanced = await this.enhanceWithAI(parsed, aiProvider, apiKey);
+          return { data: enhanced, method: 'ai-enhanced' };
+        } catch (error) {
+          // If AI enhancement fails, return original parsed data
+          return { data: parsed, method: 'parser' };
+        }
       }
-    } else {
-      console.log(`ℹ️ [ParsingService] AI not configured, using regex parser directly`);
+
+      return { data: parsed, method: 'parser' };
+    } catch (error) {
+      throw new Error(
+        `Failed to parse document: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
-
-    // Fallback to regex parser
-    console.log(`🔧 [ParsingService] Using regex-based parser...`);
-    const parsed = await DocumentParser.parse(content, fileName);
-    console.log(`✅ [ParsingService] Regex parsing complete!`);
-
-    return { data: parsed, method: 'regex' };
   }
 
   /**
-   * Parse document using AI
+   * Determine if document should be enhanced with AI
    */
-  private static async parseWithAI(
-    content: string,
-    fileName: string,
+  private static shouldEnhanceWithAI(parsed: ParsedDocumentData): boolean {
+    // Use AI if confidence is low or critical fields are missing
+    return (
+      parsed.confidence < 0.8 ||
+      parsed.experience.length === 0 ||
+      parsed.education.length === 0
+    );
+  }
+
+  /**
+   * Enhance parsed data with AI for better structure extraction
+   */
+  private static async enhanceWithAI(
+    parsed: ParsedDocumentData,
     aiProvider: AIProvider,
     apiKey: string
   ): Promise<ParsedDocumentData> {
     const aiService = new AIService(aiProvider, apiKey);
-
-    const prompt = this.buildAIParsingPrompt(content);
-
-    console.log(`🤖 [ParsingService] Sending parsing prompt to AI (${prompt.length} chars)...`);
+    const prompt = this.buildAIEnhancementPrompt(parsed);
 
     const response = await aiService.generateContent(prompt);
 
-    console.log(`📥 [ParsingService] AI response received (${response.length} chars)`);
-    console.log(`📄 [ParsingService] Raw AI response:`, response);
+    // Parse AI response (expect JSON format with enhanced data)
+    const enhanced = this.parseAIResponse(response, parsed);
 
-    // Parse AI response (expect JSON format)
-    const parsed = this.parseAIResponse(response, content);
-
-    console.log(`✅ [ParsingService] AI response parsed successfully`);
-
-    return parsed;
+    return enhanced;
   }
 
   /**
-   * Build AI prompt for document parsing
+   * Build AI prompt for enhancing parsed data
    */
-  private static buildAIParsingPrompt(content: string): string {
-    return `Extract structured information from the following document and return as JSON.
+  private static buildAIEnhancementPrompt(parsed: ParsedDocumentData): string {
+    return `Enhance the following parsed resume/CV data by extracting structured education and experience information.
 
-Document Content:
-${content}
+Raw Text:
+${parsed.rawText}
 
-Extract the following information and return ONLY valid JSON (no markdown, no explanations):
+Current Parsed Data:
+- Skills found: ${parsed.skills.join(', ') || 'None'}
+- Names found: ${parsed.names.join(', ') || 'None'}
+- Locations found: ${parsed.locations.join(', ') || 'None'}
+
+Extract and return ONLY valid JSON with the following structure (no markdown, no explanations):
 
 {
-  "emails": ["array of email addresses found"],
-  "phones": ["array of phone numbers found"],
-  "urls": ["array of URLs found"],
-  "names": ["array of person names found"],
-  "locations": ["array of locations/cities/countries found"],
-  "dates": ["array of dates found"],
-  "keyPhrases": ["3-5 most important phrases or sentences"],
-  "wordCount": number,
-  "sections": [{"title": "section name", "content": "section content"}],
-  "isProbablyResume": true or false,
-  "skills": ["array of skills if resume"],
-  "education": ["array of education if resume"],
-  "experience": ["array of work experience if resume"]
+  "fullName": "Full name of the person",
+  "currentTitle": "Current job title",
+  "currentCompany": "Current company",
+  "education": [
+    {
+      "institution": "University/School name",
+      "degree": "Degree type (BS, MS, PhD, etc.)",
+      "field": "Field of study",
+      "startDate": "Start date (MM/YYYY)",
+      "endDate": "End date (MM/YYYY or 'Present')",
+      "gpa": "GPA if mentioned",
+      "location": "Location if mentioned"
+    }
+  ],
+  "experience": [
+    {
+      "company": "Company name",
+      "title": "Job title",
+      "location": "Location",
+      "startDate": "Start date (MM/YYYY)",
+      "endDate": "End date (MM/YYYY or 'Present')",
+      "current": true or false,
+      "description": ["Array of bullet points describing responsibilities"]
+    }
+  ],
+  "skills": ["Array of all skills mentioned"],
+  "certifications": ["Array of certifications"],
+  "languages": ["Array of languages"]
 }
 
 Return ONLY the JSON, nothing else.`;
   }
 
   /**
-   * Parse AI's JSON response
+   * Parse AI's JSON response and merge with existing data
    */
-  private static parseAIResponse(response: string, originalContent: string): ParsedDocumentData {
+  private static parseAIResponse(
+    response: string,
+    baseParsed: ParsedDocumentData
+  ): ParsedDocumentData {
     try {
       // Try to extract JSON from response (AI might wrap it in markdown)
       let jsonStr = response.trim();
@@ -117,17 +139,22 @@ Return ONLY the JSON, nothing else.`;
       jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '');
 
       // Parse the JSON
-      const parsed = JSON.parse(jsonStr);
+      const enhanced = JSON.parse(jsonStr);
 
-      // Add rawContent
-      parsed.rawContent = originalContent;
-
-      console.log(`✅ [ParsingService] AI JSON parsed successfully:`, parsed);
-
-      return parsed as ParsedDocumentData;
+      // Merge enhanced data with base parsed data
+      return {
+        ...baseParsed,
+        fullName: enhanced.fullName || baseParsed.fullName,
+        currentTitle: enhanced.currentTitle,
+        currentCompany: enhanced.currentCompany,
+        education: enhanced.education || baseParsed.education,
+        experience: enhanced.experience || baseParsed.experience,
+        skills: enhanced.skills || baseParsed.skills,
+        certifications: enhanced.certifications,
+        languages: enhanced.languages,
+        confidence: Math.max(baseParsed.confidence, 0.9), // Boost confidence with AI enhancement
+      };
     } catch (error) {
-      console.error(`❌ [ParsingService] Failed to parse AI JSON response:`, error);
-      console.error(`❌ [ParsingService] Raw response:`, response);
       throw new Error('AI returned invalid JSON');
     }
   }
@@ -135,32 +162,36 @@ Return ONLY the JSON, nothing else.`;
   /**
    * Cache parsed document in localStorage
    */
-  static cacheParseResults(documentId: string, parsed: ParsedDocumentData, method: 'ai' | 'regex'): void {
+  static cacheParseResults(
+    documentId: string,
+    parsed: ParsedDocumentData,
+    method: 'parser' | 'ai-enhanced'
+  ): void {
     try {
       const cacheKey = `parsed_doc_${documentId}`;
       const cacheData = {
         parsed,
         method,
-        cachedAt: Date.now()
+        cachedAt: Date.now(),
       };
 
       localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-      console.log(`💾 [ParsingService] Cached parsing results for document ${documentId} (method: ${method})`);
     } catch (error) {
-      console.warn(`⚠️ [ParsingService] Failed to cache parsing results:`, error);
+      // Silent fail - caching is not critical
     }
   }
 
   /**
    * Get cached parse results
    */
-  static getCachedParseResults(documentId: string): { data: ParsedDocumentData; method: 'ai' | 'regex' } | null {
+  static getCachedParseResults(
+    documentId: string
+  ): { data: ParsedDocumentData; method: 'parser' | 'ai-enhanced' } | null {
     try {
       const cacheKey = `parsed_doc_${documentId}`;
       const cached = localStorage.getItem(cacheKey);
 
       if (!cached) {
-        console.log(`ℹ️ [ParsingService] No cached results for document ${documentId}`);
         return null;
       }
 
@@ -170,15 +201,12 @@ Return ONLY the JSON, nothing else.`;
       const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 
       if (age > maxAge) {
-        console.log(`⏰ [ParsingService] Cached results for document ${documentId} expired (${Math.round(age / 1000 / 60)} mins old)`);
         localStorage.removeItem(cacheKey);
         return null;
       }
 
-      console.log(`✅ [ParsingService] Using cached results for document ${documentId} (${cacheData.method})`);
       return { data: cacheData.parsed, method: cacheData.method };
     } catch (error) {
-      console.warn(`⚠️ [ParsingService] Failed to get cached results:`, error);
       return null;
     }
   }
@@ -189,6 +217,5 @@ Return ONLY the JSON, nothing else.`;
   static clearCache(documentId: string): void {
     const cacheKey = `parsed_doc_${documentId}`;
     localStorage.removeItem(cacheKey);
-    console.log(`🗑️ [ParsingService] Cleared cache for document ${documentId}`);
   }
 }

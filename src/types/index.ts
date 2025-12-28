@@ -11,21 +11,78 @@ export interface ExtensionSettings {
   isEnabled: boolean;
 }
 
+export interface Education {
+  institution: string;
+  degree: string;
+  field?: string;
+  startDate?: string;
+  endDate?: string;
+  gpa?: string;
+  location?: string;
+}
+
+export interface Experience {
+  company: string;
+  title: string;
+  location?: string;
+  startDate: string;
+  endDate?: string;
+  current?: boolean;
+  description: string[];
+}
+
+export type DocumentType = 'resume' | 'cv' | 'cover-letter' | 'transcript' | 'other';
+
 export interface ParsedDocumentData {
+  // Contact Information
   emails: string[];
   phones: string[];
   urls: string[];
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+
+  // Personal Information
   names: string[];
+  fullName?: string;
   locations: string[];
-  dates: string[];
-  keyPhrases: string[];
-  wordCount: number;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zipCode?: string;
+
+  // Professional Information
+  currentTitle?: string;
+  currentCompany?: string;
+  yearsOfExperience?: number;
+  skills: string[];
+  certifications?: string[];
+  languages?: string[];
+
+  // Education
+  education: Education[];
+
+  // Experience
+  experience: Experience[];
+
+  // Document Structure
   sections: Array<{ title: string; content: string }>;
+  keyPhrases: string[];
+  dates: string[];
+
+  // Metadata
+  wordCount: number;
+  documentType: DocumentType;
   isProbablyResume: boolean;
-  skills?: string[];
-  education?: string[];
-  experience?: string[];
+  confidence: number; // 0-1 confidence score
+
+  // Raw Data
   rawContent: string;
+  rawText: string; // Plain text without formatting
+
+  // Form-Specific Fields
+  customFields?: Record<string, string>; // For flexible field mapping
 }
 
 export interface UploadedDocument {
