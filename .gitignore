@@ -98,3 +98,10 @@ temp/
 .dist
 dist/
 dist/*
+
+# Test files
+test-*.cjs
+test-*.js
+
+# OS files
+Thumbs.db
