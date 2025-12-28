@@ -1,7 +1,8 @@
-import { FormField, ProviderError } from '@/types';
+import { FormField, ProviderError, ExtensionSettings, UploadedDocument } from '@/types';
 import { FormScraper, FieldMetadata } from './scraper';
 import { AIService } from '@/utils/aiService';
 import { EncryptionUtil } from '@/utils/encryption';
+import { TIMEOUTS, COLORS } from '@/config/constants';
 
 class FormAnalyzer {
   private detectedForms: FormField[] = [];
@@ -55,7 +56,7 @@ class FormAnalyzer {
       // Wait a bit for dynamic content to load
       // Much longer delay for main page to allow iframes to fully load
       // Shorter delay for iframes since they load after the parent
-      const delay = this.isTopFrame ? 5000 : 2000;
+      const delay = this.isTopFrame ? TIMEOUTS.TOP_FRAME_DELAY : TIMEOUTS.IFRAME_DELAY;
 
       setTimeout(() => {
         // Use the new scraper engine (skipFilled = false to detect all fields)
@@ -280,7 +281,7 @@ class FormAnalyzer {
       // Build personal information context
       let personalInfo = 'Personal Information:\n';
 
-      settings.documents.forEach((doc: any) => {
+      settings.documents.forEach((doc: UploadedDocument) => {
         personalInfo += `\n${doc.name}:\n${doc.content}\n`;
       });
 
@@ -321,7 +322,7 @@ class FormAnalyzer {
     }
   }
 
-  private async getSettings(): Promise<any> {
+  private async getSettings(): Promise<ExtensionSettings> {
     return new Promise((resolve) => {
       chrome.storage.local.get(['settings'], (result) => {
         resolve(result.settings || { aiProvider: 'claude', apiKey: '', documents: [], isEnabled: true });
@@ -329,10 +330,10 @@ class FormAnalyzer {
     });
   }
 
-  private buildContext(settings: any): string {
+  private buildContext(settings: ExtensionSettings): string {
     let context = 'Personal Information:\n';
 
-    settings.documents.forEach((doc: any) => {
+    settings.documents.forEach((doc: UploadedDocument) => {
       context += `\n${doc.name}:\n${doc.content}\n`;
     });
 
@@ -419,13 +420,7 @@ class FormAnalyzer {
       existing.remove();
     }
 
-    const colors = {
-      loading: { bg: '#1f2937', border: '#3b82f6', text: '#fff' },
-      success: { bg: '#065f46', border: '#10b981', text: '#fff' },
-      error: { bg: '#7f1d1d', border: '#ef4444', text: '#fff' }
-    };
-
-    const config = colors[type];
+    const config = COLORS[type.toUpperCase() as keyof typeof COLORS];
     const showSpinner = type === 'loading';
 
     const notification = document.createElement('div');
@@ -481,7 +476,7 @@ class FormAnalyzer {
 
     document.body.appendChild(notification);
 
-    // Auto-dismiss success and error messages after 5 seconds, keep loading until replaced
+    // Auto-dismiss success and error messages, keep loading until replaced
     if (type !== 'loading') {
       setTimeout(() => {
         const el = document.getElementById('prefiller-notification');
@@ -489,7 +484,7 @@ class FormAnalyzer {
           el.style.animation = 'slideOut 0.3s ease-in';
           setTimeout(() => el.remove(), 300);
         }
-      }, 5000);
+      }, TIMEOUTS.NOTIFICATION_DURATION);
     }
   }
 }

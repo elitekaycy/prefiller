@@ -5,6 +5,7 @@
 
 import { BaseAIProvider } from './ai/BaseAIProvider';
 import { ProviderError, ProviderErrorCode } from './ai/ProviderError';
+import { AI_CONFIG, API_ENDPOINTS } from '@/config/constants';
 
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
@@ -29,8 +30,8 @@ export interface ClaudeResponse {
 }
 
 export class ClaudeAPI extends BaseAIProvider {
-  private baseUrl = 'https://api.anthropic.com/v1/messages';
-  private model = 'claude-3-5-sonnet-20241022';
+  private baseUrl = API_ENDPOINTS.CLAUDE;
+  private model = AI_CONFIG.CLAUDE_MODEL;
 
   constructor(apiKey: string) {
     super();

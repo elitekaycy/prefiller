@@ -1,10 +1,10 @@
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Prefiller extension installed');
-
   // Enable side panel behavior
-  await chrome.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error) => console.error('Error setting panel behavior:', error));
+  try {
+    await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  } catch (error) {
+    // Silent fail - side panel may not be available in all environments
+  }
 
   chrome.storage.local.get(['settings'], (result) => {
     if (!result.settings) {

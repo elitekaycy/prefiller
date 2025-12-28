@@ -5,6 +5,7 @@
 
 import { BaseAIProvider } from './ai/BaseAIProvider';
 import { ProviderError, ProviderErrorCode } from './ai/ProviderError';
+import { AI_CONFIG, API_ENDPOINTS } from '@/config/constants';
 
 export interface GroqMessage {
   role: 'system' | 'user' | 'assistant';
@@ -30,8 +31,8 @@ export interface GroqResponse {
 }
 
 export class GroqAPI extends BaseAIProvider {
-  private baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  private model = 'llama-3.3-70b-versatile';
+  private baseUrl = API_ENDPOINTS.GROQ;
+  private model = AI_CONFIG.GROQ_MODEL;
 
   constructor(apiKey: string) {
     super();

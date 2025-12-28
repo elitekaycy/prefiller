@@ -4,6 +4,7 @@ import { ChromeAI } from './chromeai';
 import { GroqAPI } from './groq';
 import { IAIProvider } from './ai/IAIProvider';
 import { AIProvider } from '@/types';
+import { PROVIDER_NAMES, PROVIDER_DESCRIPTIONS, API_KEY_URLS } from '@/config/constants';
 
 export class AIService {
   private provider: IAIProvider;
@@ -47,48 +48,21 @@ export class AIService {
   }
 
   static getProviderName(provider: AIProvider): string {
-    switch (provider) {
-      case 'gemini':
-        return 'Google Gemini';
-      case 'claude':
-        return 'Anthropic Claude';
-      case 'chromeai':
-        return 'Chrome AI';
-      case 'groq':
-        return 'Groq';
-      default:
-        return 'Unknown';
-    }
+    return PROVIDER_NAMES[provider] || 'Unknown';
   }
 
   static getProviderDescription(provider: AIProvider): string {
-    switch (provider) {
-      case 'gemini':
-        return 'Google\'s advanced AI model with strong reasoning capabilities';
-      case 'claude':
-        return 'Anthropic\'s helpful, harmless, and honest AI assistant';
-      case 'chromeai':
-        return 'Free built-in AI that runs locally in Chrome (Gemini Nano)';
-      case 'groq':
-        return 'Ultra-fast FREE AI powered by Llama 3.3 70B (30 req/min free tier)';
-      default:
-        return '';
-    }
+    return PROVIDER_DESCRIPTIONS[provider] || '';
   }
 
   static getApiKeyUrl(provider: AIProvider): string {
-    switch (provider) {
-      case 'gemini':
-        return 'https://aistudio.google.com/app/apikey';
-      case 'claude':
-        return 'https://console.anthropic.com/account/keys';
-      case 'chromeai':
-        return 'chrome://flags/#prompt-api-for-gemini-nano';
-      case 'groq':
-        return 'https://console.groq.com/keys';
-      default:
-        return '';
-    }
+    const urlMap: Record<AIProvider, string> = {
+      gemini: API_KEY_URLS.GEMINI,
+      claude: API_KEY_URLS.CLAUDE,
+      chromeai: API_KEY_URLS.CHROME_AI,
+      groq: API_KEY_URLS.GROQ,
+    };
+    return urlMap[provider] || '';
   }
 
   static validateApiKeyFormat(provider: AIProvider, apiKey: string): boolean {

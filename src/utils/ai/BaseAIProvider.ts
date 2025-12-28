@@ -6,6 +6,7 @@
 import { IAIProvider, ProviderConfig } from './IAIProvider';
 import { PromptBuilder } from './PromptBuilder';
 import { FieldMetadata } from '@/types';
+import { AI_CONFIG } from '@/config/constants';
 
 export abstract class BaseAIProvider implements IAIProvider {
   protected apiKey?: string;
@@ -13,10 +14,10 @@ export abstract class BaseAIProvider implements IAIProvider {
 
   constructor(config: ProviderConfig = {}) {
     this.config = {
-      temperature: config.temperature ?? 0.4,
-      maxTokens: config.maxTokens ?? 1024,
-      topK: config.topK ?? 3,
-      topP: config.topP ?? 1,
+      temperature: config.temperature ?? AI_CONFIG.DEFAULT_TEMPERATURE,
+      maxTokens: config.maxTokens ?? AI_CONFIG.DEFAULT_MAX_TOKENS,
+      topK: config.topK ?? AI_CONFIG.DEFAULT_TOP_K,
+      topP: config.topP ?? AI_CONFIG.DEFAULT_TOP_P,
     };
   }
 

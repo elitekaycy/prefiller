@@ -79,7 +79,6 @@ export function App() {
         });
       });
     } catch (error) {
-      console.error('Storage error:', error);
       alert(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };

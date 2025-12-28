@@ -6,9 +6,10 @@
 import { BaseAIProvider } from './ai/BaseAIProvider';
 import { ProviderError, ProviderErrorCode } from './ai/ProviderError';
 import { GeminiResponse } from '@/types';
+import { API_ENDPOINTS } from '@/config/constants';
 
 export class GeminiAPI extends BaseAIProvider {
-  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  private baseUrl = API_ENDPOINTS.GEMINI;
 
   constructor(apiKey: string) {
     super();
