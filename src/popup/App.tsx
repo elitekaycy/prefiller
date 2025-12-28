@@ -5,7 +5,7 @@ import { FormActions } from '@/components/FormActions';
 import { ExtensionSettings, AIProvider } from '@/types';
 import { EncryptionUtil } from '@/utils/encryption';
 import { ChromeAI } from '@/utils/chromeai';
-import { StorageManager, StorageMigration } from '@/storage';
+import { StorageManager } from '@/storage';
 
 type AppStep = 'setup' | 'documents' | 'actions';
 
@@ -23,9 +23,6 @@ export function App() {
     // Preference: Chrome AI (free, local) > Groq (free, fast) > Gemini (free tier)
     const initializeDefaultProvider = async () => {
       try {
-        // Run migration first
-        await StorageMigration.autoMigrate();
-
         const chromeAIAvailable = await ChromeAI.isAvailable();
         const defaultProvider: AIProvider = chromeAIAvailable ? 'chromeai' : 'groq';
 

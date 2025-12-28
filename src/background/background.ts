@@ -1,4 +1,4 @@
-import { StorageMigration, StorageManager } from '@/storage';
+import { StorageManager } from '@/storage';
 
 chrome.runtime.onInstalled.addListener(async () => {
   // Enable side panel behavior
@@ -6,13 +6,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   } catch (error) {
     // Silent fail - side panel may not be available in all environments
-  }
-
-  // Run storage migration on install/update
-  try {
-    await StorageMigration.autoMigrate();
-  } catch (error) {
-    // Silent fail - migration errors shouldn't break installation
   }
 });
 

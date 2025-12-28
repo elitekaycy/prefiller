@@ -6,7 +6,6 @@
 // Core Storage Classes
 export { StorageManager } from './StorageManager';
 export { CacheManager } from './CacheManager';
-export { StorageMigration } from './migration';
 
 // Storage Provider Interface and Implementation
 export { IStorageProvider } from './IStorageProvider';
@@ -21,5 +20,3 @@ export type {
   CacheMetadata,
   QuotaInfo,
 } from './StorageSchema';
-
-export type { MigrationResult } from './migration';
