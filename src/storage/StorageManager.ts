@@ -5,11 +5,11 @@
 
 import { AIProvider, UploadedDocument } from '@/types';
 import { IStorageProvider } from './IStorageProvider';
-import { ChromeStorageProvider } from './ChromeStorageProvider';
+import { BrowserStorageProvider } from './BrowserStorageProvider';
 import { StorageKey, QuotaInfo, DocumentMetadata } from './StorageSchema';
 
 export class StorageManager {
-  private static provider: IStorageProvider = new ChromeStorageProvider();
+  private static provider: IStorageProvider = new BrowserStorageProvider();
 
   /**
    * Set custom storage provider (for testing or different implementations)

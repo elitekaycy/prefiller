@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { Button, Header, FixedFooter } from './ui';
+import { BrowserAPI } from '@/utils/browserApi';
 
 interface FormActionsProps {
   isEnabled: boolean;
@@ -17,7 +18,8 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
     setIsProcessing(true);
 
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tabs = await BrowserAPI.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
 
       if (!tab.id) {
         alert('No active tab found. Please refresh the page and try again.');
@@ -27,7 +29,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       // Helper function to check if content script is loaded
       const checkContentScript = async (tabId: number) => {
         try {
-          await chrome.tabs.sendMessage(tabId, { action: 'PING' });
+          await BrowserAPI.tabs.sendMessage(tabId, { action: 'PING' });
           return true;
         } catch (error) {
           return false;
@@ -40,7 +42,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
 
         if (!isLoaded) {
           try {
-            await chrome.scripting.executeScript({
+            await BrowserAPI.scripting.executeScript({
               target: { tabId },
               files: ['content.js']
             });
@@ -61,7 +63,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       setContentScriptStatus('loaded');
 
       // Use executeScript to run in all frames (main + iframes)
-      await chrome.scripting.executeScript({
+      await BrowserAPI.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         func: () => {
           window.postMessage({ type: 'PREFILLER_FILL_FORMS' }, '*');
@@ -78,9 +80,10 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
 
   const handleRefreshPage = async () => {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab.id) {
-        await chrome.tabs.reload(tab.id);
+      const tabs = await BrowserAPI.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      if (tab?.id) {
+        await BrowserAPI.tabs.reload(tab.id);
         setContentScriptStatus('unknown');
       }
     } catch (error) {

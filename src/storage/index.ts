@@ -9,7 +9,7 @@ export { CacheManager } from './CacheManager';
 
 // Storage Provider Interface and Implementation
 export { IStorageProvider } from './IStorageProvider';
-export { ChromeStorageProvider } from './ChromeStorageProvider';
+export { BrowserStorageProvider, ChromeStorageProvider } from './BrowserStorageProvider';
 
 // Storage Schema and Types
 export type {

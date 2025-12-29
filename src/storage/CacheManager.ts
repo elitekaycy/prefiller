@@ -5,12 +5,12 @@
 
 import { ParsedDocumentData, AIProvider } from '@/types';
 import { IStorageProvider } from './IStorageProvider';
-import { ChromeStorageProvider } from './ChromeStorageProvider';
+import { BrowserStorageProvider } from './BrowserStorageProvider';
 import { StorageKey, CacheMetadata, CachedResponse } from './StorageSchema';
 import { StorageManager } from './StorageManager';
 
 export class CacheManager {
-  private static provider: IStorageProvider = new ChromeStorageProvider();
+  private static provider: IStorageProvider = new BrowserStorageProvider();
   private static readonly MAX_CACHE_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
   private static readonly RESPONSE_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 hours
 
