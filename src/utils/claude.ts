@@ -47,40 +47,7 @@ export class ClaudeAPI extends BaseAIProvider {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey!,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: this.config.maxTokens,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    if (!response.ok) {
-      throw await this.handleError(response);
-    }
-
-    const data: ClaudeResponse = await response.json();
-
-    if (!data.content || data.content.length === 0) {
-      throw new ProviderError(
-        ProviderErrorCode.UNKNOWN,
-        'No response from Claude API',
-        this.getName()
-      );
-    }
-
-    return data.content[0].text;
-  }
-
-  async testConnection(): Promise<boolean> {
-    try {
+    return this.executeWithRetry(async () => {
       const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -91,8 +58,8 @@ export class ClaudeAPI extends BaseAIProvider {
         },
         body: JSON.stringify({
           model: this.model,
-          max_tokens: 10,
-          messages: [{ role: 'user', content: 'Hi' }]
+          max_tokens: this.config.maxTokens,
+          messages: [{ role: 'user', content: prompt }]
         })
       });
 
@@ -100,11 +67,48 @@ export class ClaudeAPI extends BaseAIProvider {
         throw await this.handleError(response);
       }
 
-      const data = await response.json();
-      return !!(data.content && data.content.length > 0);
-    } catch (error) {
-      throw error;
-    }
+      const data: ClaudeResponse = await response.json();
+
+      if (!data.content || data.content.length === 0) {
+        throw new ProviderError(
+          ProviderErrorCode.UNKNOWN,
+          'No response from Claude API',
+          this.getName()
+        );
+      }
+
+      return data.content[0].text;
+    });
+  }
+
+  async testConnection(): Promise<boolean> {
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await fetch(this.baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': this.apiKey!,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: this.model,
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'Hi' }]
+          })
+        });
+
+        if (!response.ok) {
+          throw await this.handleError(response);
+        }
+
+        const data = await response.json();
+        return !!(data.content && data.content.length > 0);
+      } catch (error) {
+        throw error;
+      }
+    });
   }
 
   private async handleError(response: Response): Promise<ProviderError> {

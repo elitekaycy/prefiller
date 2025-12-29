@@ -48,75 +48,79 @@ export class GroqAPI extends BaseAIProvider {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    try {
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [{ role: 'user', content: prompt }],
-          temperature: this.config.temperature,
-          max_tokens: this.config.maxTokens,
-          top_p: this.config.topP,
-          stream: false
-        })
-      });
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await fetch(this.baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: this.config.temperature,
+            max_tokens: this.config.maxTokens,
+            top_p: this.config.topP,
+            stream: false
+          })
+        });
 
-      if (!response.ok) {
-        throw await this.handleError(response);
-      }
+        if (!response.ok) {
+          throw await this.handleError(response);
+        }
 
-      const data: GroqResponse = await response.json();
+        const data: GroqResponse = await response.json();
 
-      if (!data.choices || data.choices.length === 0) {
+        if (!data.choices || data.choices.length === 0) {
+          throw new ProviderError(
+            ProviderErrorCode.UNKNOWN,
+            'No response from Groq API',
+            this.getName()
+          );
+        }
+
+        return data.choices[0].message.content;
+      } catch (error) {
+        if (error instanceof ProviderError) {
+          throw error;
+        }
         throw new ProviderError(
-          ProviderErrorCode.UNKNOWN,
-          'No response from Groq API',
-          this.getName()
+          ProviderErrorCode.NETWORK_ERROR,
+          error instanceof Error ? error.message : 'Unknown error',
+          this.getName(),
+          error instanceof Error ? error : undefined
         );
       }
-
-      return data.choices[0].message.content;
-    } catch (error) {
-      if (error instanceof ProviderError) {
-        throw error;
-      }
-      throw new ProviderError(
-        ProviderErrorCode.NETWORK_ERROR,
-        error instanceof Error ? error.message : 'Unknown error',
-        this.getName(),
-        error instanceof Error ? error : undefined
-      );
-    }
+    });
   }
 
   async testConnection(): Promise<boolean> {
-    try {
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [{ role: 'user', content: 'Say "OK"' }],
-          max_tokens: 10
-        })
-      });
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await fetch(this.baseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: 'user', content: 'Say "OK"' }],
+            max_tokens: 10
+          })
+        });
 
-      if (!response.ok) {
-        throw await this.handleError(response);
+        if (!response.ok) {
+          throw await this.handleError(response);
+        }
+
+        const data = await response.json();
+        return !!(data.choices && data.choices.length > 0);
+      } catch (error) {
+        throw error;
       }
-
-      const data = await response.json();
-      return !!(data.choices && data.choices.length > 0);
-    } catch (error) {
-      throw error;
-    }
+    });
   }
 
   private async handleError(response: Response): Promise<ProviderError> {

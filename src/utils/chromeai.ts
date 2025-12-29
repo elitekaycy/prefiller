@@ -115,83 +115,87 @@ export class ChromeAI extends BaseAIProvider {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    try {
-      if (!window.ai?.languageModel) {
-        throw new ProviderError(
-          ProviderErrorCode.UNAVAILABLE,
-          'Chrome AI is not available. Please use Chrome 127+ and enable the Prompt API.',
-          this.getName()
-        );
-      }
-
-      const session = await window.ai.languageModel.create({
-        temperature: this.config.temperature,
-        topK: this.config.topK
-      });
-
-      const response = await session.prompt(prompt);
-
-      // Clean up the session
-      session.destroy();
-
-      return response;
-    } catch (error) {
-      if (error instanceof ProviderError) {
-        throw error;
-      }
-
-      if (error instanceof Error) {
-        if (error.message.includes('not available')) {
+    return this.executeWithRetry(async () => {
+      try {
+        if (!window.ai?.languageModel) {
           throw new ProviderError(
             ProviderErrorCode.UNAVAILABLE,
-            'Chrome AI is not available. Please enable it in chrome://flags or use another AI provider.',
+            'Chrome AI is not available. Please use Chrome 127+ and enable the Prompt API.',
             this.getName()
           );
         }
+
+        const session = await window.ai.languageModel.create({
+          temperature: this.config.temperature,
+          topK: this.config.topK
+        });
+
+        const response = await session.prompt(prompt);
+
+        // Clean up the session
+        session.destroy();
+
+        return response;
+      } catch (error) {
+        if (error instanceof ProviderError) {
+          throw error;
+        }
+
+        if (error instanceof Error) {
+          if (error.message.includes('not available')) {
+            throw new ProviderError(
+              ProviderErrorCode.UNAVAILABLE,
+              'Chrome AI is not available. Please enable it in chrome://flags or use another AI provider.',
+              this.getName()
+            );
+          }
+          throw new ProviderError(
+            ProviderErrorCode.UNKNOWN,
+            `Chrome AI Error: ${error.message}`,
+            this.getName(),
+            error
+          );
+        }
+
         throw new ProviderError(
           ProviderErrorCode.UNKNOWN,
-          `Chrome AI Error: ${error.message}`,
-          this.getName(),
-          error
+          'Chrome AI request failed. Please try another AI provider.',
+          this.getName()
         );
       }
-
-      throw new ProviderError(
-        ProviderErrorCode.UNKNOWN,
-        'Chrome AI request failed. Please try another AI provider.',
-        this.getName()
-      );
-    }
+    });
   }
 
   async testConnection(): Promise<boolean> {
-    try {
-      if (!window.ai?.languageModel) {
-        throw new ProviderError(
-          ProviderErrorCode.UNAVAILABLE,
-          'Chrome AI is not available',
-          this.getName()
-        );
+    return this.executeWithRetry(async () => {
+      try {
+        if (!window.ai?.languageModel) {
+          throw new ProviderError(
+            ProviderErrorCode.UNAVAILABLE,
+            'Chrome AI is not available',
+            this.getName()
+          );
+        }
+
+        const capabilities = await window.ai.languageModel.capabilities();
+
+        if (capabilities.available === 'no') {
+          throw new ProviderError(
+            ProviderErrorCode.UNAVAILABLE,
+            'Chrome AI is not available. Please enable the Prompt API in chrome://flags',
+            this.getName()
+          );
+        }
+
+        // Try to create a session to test
+        const session = await window.ai.languageModel.create();
+        const testResponse = await session.prompt('Say "OK"');
+        session.destroy();
+
+        return testResponse.length > 0;
+      } catch (error) {
+        throw error;
       }
-
-      const capabilities = await window.ai.languageModel.capabilities();
-
-      if (capabilities.available === 'no') {
-        throw new ProviderError(
-          ProviderErrorCode.UNAVAILABLE,
-          'Chrome AI is not available. Please enable the Prompt API in chrome://flags',
-          this.getName()
-        );
-      }
-
-      // Try to create a session to test
-      const session = await window.ai.languageModel.create();
-      const testResponse = await session.prompt('Say "OK"');
-      session.destroy();
-
-      return testResponse.length > 0;
-    } catch (error) {
-      throw error;
-    }
+    });
   }
 }

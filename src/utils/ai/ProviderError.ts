@@ -45,4 +45,27 @@ export class ProviderError extends Error {
         return `An error occurred with ${this.provider}: ${this.message}`;
     }
   }
+
+  /**
+   * Determine if this error should be retried
+   * Non-retryable: INVALID_API_KEY, AUTH_ERROR, QUOTA_EXCEEDED
+   * Retryable: NETWORK_ERROR, RATE_LIMITED, UNAVAILABLE, UNKNOWN
+   */
+  isRetryable(): boolean {
+    switch (this.code) {
+      case ProviderErrorCode.INVALID_API_KEY:
+      case ProviderErrorCode.AUTH_ERROR:
+      case ProviderErrorCode.QUOTA_EXCEEDED:
+        return false;
+
+      case ProviderErrorCode.NETWORK_ERROR:
+      case ProviderErrorCode.RATE_LIMITED:
+      case ProviderErrorCode.UNAVAILABLE:
+      case ProviderErrorCode.UNKNOWN:
+        return true;
+
+      default:
+        return true;
+    }
+  }
 }

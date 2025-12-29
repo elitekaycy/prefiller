@@ -7,10 +7,13 @@ import { IAIProvider, ProviderConfig } from './IAIProvider';
 import { PromptBuilder } from './PromptBuilder';
 import { FieldMetadata } from '@/types';
 import { AI_CONFIG } from '@/config/constants';
+import { withRetry, RetryConfig, DEFAULT_RETRY_CONFIG } from '../retry';
+import { Toast } from '../toast';
 
 export abstract class BaseAIProvider implements IAIProvider {
   protected apiKey?: string;
   protected config: ProviderConfig;
+  protected retryConfig: RetryConfig;
 
   constructor(config: ProviderConfig = {}) {
     this.config = {
@@ -19,16 +22,41 @@ export abstract class BaseAIProvider implements IAIProvider {
       topK: config.topK ?? AI_CONFIG.DEFAULT_TOP_K,
       topP: config.topP ?? AI_CONFIG.DEFAULT_TOP_P,
     };
+
+    // Default retry configuration with toast notifications
+    this.retryConfig = {
+      ...DEFAULT_RETRY_CONFIG,
+      onRetry: (attempt: number, maxRetries: number, error: Error) => {
+        Toast.loading(
+          `Connection issue. Retrying (${attempt}/${maxRetries})...`,
+          2000
+        );
+      },
+    };
+  }
+
+  /**
+   * Execute an operation with retry logic
+   * Providers can use this to wrap API calls
+   */
+  protected async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    customConfig?: Partial<RetryConfig>
+  ): Promise<T> {
+    const config = customConfig ? { ...this.retryConfig, ...customConfig } : this.retryConfig;
+    return withRetry(operation, config);
   }
 
   /**
    * Generate form responses using shared prompt building logic
-   * This method is shared across all providers
+   * This method is shared across all providers with automatic retry
    */
   async generateFormResponses(context: string, fields: FieldMetadata[]): Promise<string[]> {
-    const prompt = PromptBuilder.buildFormPrompt(context, fields);
-    const response = await this.generateContent(prompt);
-    return PromptBuilder.parseFormResponse(response, fields.length);
+    return this.executeWithRetry(async () => {
+      const prompt = PromptBuilder.buildFormPrompt(context, fields);
+      const response = await this.generateContent(prompt);
+      return PromptBuilder.parseFormResponse(response, fields.length);
+    });
   }
 
   /**

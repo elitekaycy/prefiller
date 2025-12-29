@@ -25,85 +25,89 @@ export class GeminiAPI extends BaseAIProvider {
   }
 
   async generateContent(prompt: string): Promise<string> {
-    try {
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: prompt }]
-          }],
-          generationConfig: {
-            temperature: this.config.temperature,
-            topK: this.config.topK,
-            topP: this.config.topP,
-            maxOutputTokens: this.config.maxTokens,
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
-          ]
-        })
-      });
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+              temperature: this.config.temperature,
+              topK: this.config.topK,
+              topP: this.config.topP,
+              maxOutputTokens: this.config.maxTokens,
+            },
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }
+            ]
+          })
+        });
 
-      if (!response.ok) {
-        throw await this.handleError(response);
-      }
+        if (!response.ok) {
+          throw await this.handleError(response);
+        }
 
-      const data: GeminiResponse = await response.json();
+        const data: GeminiResponse = await response.json();
 
-      if (!data.candidates || data.candidates.length === 0) {
+        if (!data.candidates || data.candidates.length === 0) {
+          throw new ProviderError(
+            ProviderErrorCode.UNKNOWN,
+            'No response from Gemini API',
+            this.getName()
+          );
+        }
+
+        return data.candidates[0].content.parts[0].text;
+      } catch (error) {
+        if (error instanceof ProviderError) {
+          throw error;
+        }
         throw new ProviderError(
-          ProviderErrorCode.UNKNOWN,
-          'No response from Gemini API',
-          this.getName()
+          ProviderErrorCode.NETWORK_ERROR,
+          error instanceof Error ? error.message : 'Unknown error',
+          this.getName(),
+          error instanceof Error ? error : undefined
         );
       }
-
-      return data.candidates[0].content.parts[0].text;
-    } catch (error) {
-      if (error instanceof ProviderError) {
-        throw error;
-      }
-      throw new ProviderError(
-        ProviderErrorCode.NETWORK_ERROR,
-        error instanceof Error ? error.message : 'Unknown error',
-        this.getName(),
-        error instanceof Error ? error : undefined
-      );
-    }
+    });
   }
 
   async testConnection(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: 'Test' }]
-          }],
-          generationConfig: {
-            maxOutputTokens: 5
-          }
-        })
-      });
+    return this.executeWithRetry(async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: 'Test' }]
+            }],
+            generationConfig: {
+              maxOutputTokens: 5
+            }
+          })
+        });
 
-      if (!response.ok) {
-        throw await this.handleError(response);
+        if (!response.ok) {
+          throw await this.handleError(response);
+        }
+
+        const data = await response.json();
+        return !!(data.candidates && data.candidates.length > 0);
+      } catch (error) {
+        throw error;
       }
-
-      const data = await response.json();
-      return !!(data.candidates && data.candidates.length > 0);
-    } catch (error) {
-      throw error;
-    }
+    });
   }
 
   private async handleError(response: Response): Promise<ProviderError> {
