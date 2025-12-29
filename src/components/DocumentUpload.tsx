@@ -135,14 +135,14 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 shadow-sm border">
-      <h3 className="text-lg font-semibold mb-3 text-gray-800">Personal Documents</h3>
+    <div className="bg-white rounded-lg p-4 border border-gray-200">
+      <h3 className="text-base font-semibold mb-3 text-gray-800">Documents</h3>
 
       <div
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
           isDragging
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+            ? 'border-blue-400 bg-blue-50'
+            : 'border-gray-300 hover:border-blue-300 bg-gray-50'
         } ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -183,13 +183,13 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
       </div>
 
       {error && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <strong>Error:</strong> {error}
+        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+          {error}
         </div>
       )}
 
       {parsingStatus && !isProcessing && (
-        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+        <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
           {parsingStatus}
         </div>
       )}

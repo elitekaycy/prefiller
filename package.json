@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "pdfjs-dist": "^5.4.530",
-    "preact": "^10.19.3"
+    "preact": "^10.19.3",
+    "react-hot-toast": "^2.6.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.1",

@@ -6,6 +6,7 @@ import { ExtensionSettings, AIProvider } from '@/types';
 import { EncryptionUtil } from '@/utils/encryption';
 import { ChromeAI } from '@/utils/chromeai';
 import { StorageManager } from '@/storage';
+import { Toast, Toaster } from '@/utils/toast';
 
 type AppStep = 'setup' | 'documents' | 'actions';
 
@@ -114,7 +115,7 @@ export function App() {
         await StorageManager.setIsEnabled(newSettings.isEnabled);
       }
     } catch (error) {
-      alert(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      Toast.error(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -166,14 +167,17 @@ export function App() {
   };
 
   return (
-    <div className="gemini-container">
-      <div className="rainbow-border">
-        <div className="gemini-content">
-          <div className="step-container">
-            {renderCurrentStep()}
+    <>
+      <Toaster />
+      <div className="gemini-container">
+        <div className="rainbow-border">
+          <div className="gemini-content">
+            <div className="step-container">
+              {renderCurrentStep()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

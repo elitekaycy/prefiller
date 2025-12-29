@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { Button, Header, FixedFooter } from './ui';
 import { BrowserAPI } from '@/utils/browserApi';
+import { Toast } from '@/utils/toast';
 
 interface FormActionsProps {
   isEnabled: boolean;
@@ -72,7 +73,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
     } catch (error) {
       setContentScriptStatus('failed');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Error: ${errorMessage}`);
+      Toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -97,24 +98,28 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
     <div className="flex flex-col h-full">
       <Header title="Ready to Fill" onBack={onBack} />
 
-      <div className="flex-1 space-y-6 pb-24">
+      <div className="flex-1 space-y-4 pb-20">
         {/* Status Overview */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                hasApiKey ? 'bg-green-100' : 'bg-red-100'
+        <div className="grid grid-cols-2 gap-3">
+          <div className={`rounded-lg border p-3 text-center ${
+            hasApiKey
+              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-100'
+              : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
+          }`}>
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                hasApiKey ? 'bg-green-100' : 'bg-gray-100'
               }`}>
-                <span className={`material-symbols-outlined ${
-                  hasApiKey ? 'text-green-600' : 'text-red-600'
+                <span className={`material-symbols-outlined text-base ${
+                  hasApiKey ? 'text-green-600' : 'text-gray-400'
                 }`}>
-                  {hasApiKey ? 'check_circle' : 'error'}
+                  {hasApiKey ? 'check_circle' : 'close'}
                 </span>
               </div>
               <div>
                 <div className="text-xs text-gray-600 font-medium">AI Provider</div>
-                <div className={`text-sm font-semibold ${
-                  hasApiKey ? 'text-green-600' : 'text-red-600'
+                <div className={`text-xs font-semibold ${
+                  hasApiKey ? 'text-green-700' : 'text-gray-500'
                 }`}>
                   {hasApiKey ? 'Connected' : 'Not Set'}
                 </div>
@@ -122,21 +127,25 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+          <div className={`rounded-lg border p-3 text-center ${
+            hasDocuments
+              ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100'
+              : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
+          }`}>
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-between ${
                 hasDocuments ? 'bg-blue-100' : 'bg-gray-100'
               }`}>
-                <span className={`material-symbols-outlined ${
+                <span className={`material-symbols-outlined text-base ${
                   hasDocuments ? 'text-blue-600' : 'text-gray-400'
                 }`}>
-                  description
+                  {hasDocuments ? 'description' : 'close'}
                 </span>
               </div>
               <div>
                 <div className="text-xs text-gray-600 font-medium">Documents</div>
-                <div className={`text-sm font-semibold ${
-                  hasDocuments ? 'text-blue-600' : 'text-gray-500'
+                <div className={`text-xs font-semibold ${
+                  hasDocuments ? 'text-blue-700' : 'text-gray-500'
                 }`}>
                   {hasDocuments ? 'Loaded' : 'None'}
                 </div>
@@ -145,75 +154,63 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
           </div>
         </div>
 
-        {/* Main Action */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <Button
-            onClick={handleAnalyzeAndFill}
-            disabled={!canUseFeatures}
-            loading={isProcessing}
-            variant="primary"
-            size="lg"
-            className="w-full"
-          >
-            <span className="material-symbols-outlined">auto_fix_high</span>
-            <span>{isProcessing ? 'Processing...' : 'Analyze & Fill Forms'}</span>
-          </Button>
-
-          {/* Status Message */}
-          <div className="mt-4 text-center">
-            {!canUseFeatures ? (
-              <div className="text-sm text-red-600">
-                {!hasApiKey ? '⚠️ AI provider not configured' : '⚠️ Extension disabled'}
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500">
-                Click to detect and auto-fill form fields on this page
-              </div>
-            )}
+        {/* Status Message */}
+        {!canUseFeatures && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center text-xs text-red-700">
+            {!hasApiKey ? 'AI provider not configured' : 'Extension disabled'}
           </div>
-        </div>
+        )}
 
         {/* Content Script Error */}
         {contentScriptStatus === 'failed' && (
-          <div className="space-y-3">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-              <span className="material-symbols-outlined text-red-600">error</span>
-              <div className="flex-1 text-sm text-red-800">
-                Content script failed to load. This may happen on some websites with strict security policies.
+          <div className="space-y-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+              <span className="material-symbols-outlined text-red-500 text-base">error</span>
+              <div className="flex-1 text-xs text-red-800">
+                Content script failed. Try refreshing the page.
               </div>
             </div>
             <Button
               onClick={handleRefreshPage}
               variant="secondary"
+              size="sm"
               className="w-full"
             >
               <span className="material-symbols-outlined">refresh</span>
-              <span>Refresh Page & Try Again</span>
+              <span>Refresh Page</span>
             </Button>
           </div>
         )}
 
         {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="text-sm font-medium text-blue-900 mb-2">💡 How to use:</div>
-          <ul className="text-xs text-blue-800 space-y-1.5">
-            <li className="flex items-start gap-2">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3">
+          <div className="text-xs font-medium text-blue-900 mb-1.5">How to use:</div>
+          <ul className="text-xs text-gray-700 space-y-1">
+            <li className="flex items-start gap-1.5">
               <span className="text-blue-400 mt-0.5">•</span>
-              <span>Click "Analyze & Fill Forms" to detect and auto-complete form fields</span>
+              <span>Click button to detect and fill form fields</span>
             </li>
-            <li className="flex items-start gap-2">
+            <li className="flex items-start gap-1.5">
               <span className="text-blue-400 mt-0.5">•</span>
-              <span>Review and adjust the generated content as needed</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-400 mt-0.5">•</span>
-              <span>Upload documents for better context and accuracy</span>
+              <span>Review and adjust as needed</span>
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Fixed Footer removed - no longer needed since back button is in header */}
+      {/* Fixed Footer with Analyze Button */}
+      <FixedFooter>
+        <Button
+          onClick={handleAnalyzeAndFill}
+          disabled={!canUseFeatures}
+          loading={isProcessing}
+          variant="primary"
+          className="w-full"
+        >
+          <span className="material-symbols-outlined">auto_fix_high</span>
+          <span>{isProcessing ? 'Processing...' : 'Analyze & Fill Forms'}</span>
+        </Button>
+      </FixedFooter>
     </div>
   );
 }

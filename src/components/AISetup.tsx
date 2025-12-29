@@ -4,7 +4,8 @@ import { AIService } from '@/utils/aiService';
 import { ChromeAI } from '@/utils/chromeai';
 import { StorageManager } from '@/storage';
 import { EncryptionUtil } from '@/utils/encryption';
-import { Button } from './ui';
+import { Button, FixedFooter } from './ui';
+import { Toast } from '@/utils/toast';
 
 interface AISetupProps {
   aiProvider: AIProvider;
@@ -166,17 +167,18 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   };
 
   const hasExistingKey = apiKey && !isEditMode;
+  const showVerifyButton = aiProvider === 'chromeai' || (!apiKey || isEditMode);
 
   return (
-    <>
+    <div className="flex flex-col h-full">
       <div className="step-header">
         <div className="step-title">Choose AI Provider</div>
         <div className="step-subtitle">
-          Select your preferred AI service and configure API access
+          Select your preferred AI service
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="flex-1 space-y-4 pb-20">
         {/* Provider Selection */}
         <div className="space-y-3">
           <label className="text-sm font-medium text-gray-700">AI Provider</label>
@@ -186,16 +188,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               className={`provider-card ${aiProvider === 'claude' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('claude')}
             >
-              <div className="flex items-center gap-3">
-                <div className="provider-icon claude">
-                  <span className="text-xl">🧠</span>
-                </div>
-                <div className="flex-1">
-                  <div className="provider-name">Anthropic Claude</div>
-                  <div className="provider-description">
-                    {AIService.getProviderDescription('claude')}
-                  </div>
-                </div>
+              <div className="flex items-center justify-between">
+                <div className="provider-name">Anthropic Claude</div>
                 <div className={`radio ${aiProvider === 'claude' ? 'checked' : ''}`}>
                   {aiProvider === 'claude' && <div className="radio-dot"></div>}
                 </div>
@@ -207,16 +201,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               className={`provider-card ${aiProvider === 'gemini' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('gemini')}
             >
-              <div className="flex items-center gap-3">
-                <div className="provider-icon gemini">
-                  <span className="text-xl">🤖</span>
-                </div>
-                <div className="flex-1">
-                  <div className="provider-name">Google Gemini</div>
-                  <div className="provider-description">
-                    {AIService.getProviderDescription('gemini')}
-                  </div>
-                </div>
+              <div className="flex items-center justify-between">
+                <div className="provider-name">Google Gemini</div>
                 <div className={`radio ${aiProvider === 'gemini' ? 'checked' : ''}`}>
                   {aiProvider === 'gemini' && <div className="radio-dot"></div>}
                 </div>
@@ -228,18 +214,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               className={`provider-card ${aiProvider === 'groq' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('groq')}
             >
-              <div className="flex items-center gap-3">
-                <div className="provider-icon groq">
-                  <span className="text-xl">🚀</span>
-                </div>
-                <div className="flex-1">
-                  <div className="provider-name">
-                    Groq (FREE) ⭐
-                  </div>
-                  <div className="provider-description">
-                    {AIService.getProviderDescription('groq')}
-                  </div>
-                </div>
+              <div className="flex items-center justify-between">
+                <div className="provider-name">Groq <span className="text-sm text-blue-600">(FREE)</span></div>
                 <div className={`radio ${aiProvider === 'groq' ? 'checked' : ''}`}>
                   {aiProvider === 'groq' && <div className="radio-dot"></div>}
                 </div>
@@ -251,24 +227,11 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               className={`provider-card ${aiProvider === 'chromeai' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('chromeai')}
             >
-              <div className="flex items-center gap-3">
-                <div className="provider-icon chromeai">
-                  <span className="text-xl">⚡</span>
-                </div>
-                <div className="flex-1">
-                  <div className="provider-name">
-                    Chrome AI (FREE)
-                    {chromeAIAvailable === true && <span className="text-green-600 ml-2">✓</span>}
-                    {chromeAIAvailable === false && <span className="text-orange-600 ml-2">⚠</span>}
-                  </div>
-                  <div className="provider-description">
-                    {AIService.getProviderDescription('chromeai')}
-                  </div>
-                  {chromeAIAvailable === false && (
-                    <div className="text-xs text-orange-600 mt-1">
-                      Requires setup - click to enable
-                    </div>
-                  )}
+              <div className="flex items-center justify-between">
+                <div className="provider-name">
+                  Chrome AI <span className="text-sm text-blue-600">(FREE)</span>
+                  {chromeAIAvailable === true && <span className="text-green-600 ml-2 text-sm">✓</span>}
+                  {chromeAIAvailable === false && <span className="text-orange-600 ml-2 text-sm">Setup Required</span>}
                 </div>
                 <div className={`radio ${aiProvider === 'chromeai' ? 'checked' : ''}`}>
                   {aiProvider === 'chromeai' && <div className="radio-dot"></div>}
@@ -280,16 +243,16 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
 
         {/* API Key Configuration - Hide for Chrome AI */}
         {aiProvider !== 'chromeai' ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-gray-700">
-                {AIService.getProviderName(aiProvider)} API Key
+                API Key
               </label>
               <button
                 onClick={openApiKeyPage}
-                className="text-link text-sm"
+                className="text-blue-600 hover:text-blue-700 text-xs"
               >
-                Get API Key →
+                Get Key →
               </button>
             </div>
 
@@ -298,8 +261,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                 type={showKey ? 'text' : 'password'}
                 value={inputValue}
                 onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
-                placeholder={`Enter your ${AIService.getProviderName(aiProvider)} API key`}
-                className="input-field"
+                placeholder={`Enter your API key`}
+                className="input-field pr-20"
                 disabled={hasExistingKey}
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
@@ -315,89 +278,30 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="transition-colors"
-                  style={{ color: 'var(--gemini-text-secondary)' }}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  <span className="material-symbols-outlined">
+                  <span className="material-symbols-outlined text-sm">
                     {showKey ? 'visibility' : 'visibility_off'}
                   </span>
                 </button>
               </div>
             </div>
-
-            {/* Show verify button when: no existing key OR in edit mode OR key changed */}
-            {(!apiKey || isEditMode) && (
-              <Button
-                onClick={handleConnect}
-                disabled={!inputValue.trim()}
-                loading={isConnecting}
-                variant="primary"
-                className="w-full"
-              >
-                <span className="text-xl">
-                  {connectionStatus === 'success' ? '✨' : connectionStatus === 'error' ? '⚠️' : '🔗'}
-                </span>
-                <span>
-                  {connectionStatus === 'success'
-                    ? 'Connected successfully!'
-                    : isConnecting
-                    ? 'Verifying...'
-                    : 'Verify & Connect'}
-                </span>
-              </Button>
-            )}
           </div>
         ) : (
           /* Chrome AI Setup */
-          <div className="space-y-4">
-            <div className="info-box-blue">
-              <span className="material-symbols-outlined">info</span>
-              <div>
-                <strong>Chrome AI Status:</strong> {chromeAIStatus}
-              </div>
+          <div className="space-y-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+              <div className="text-blue-900"><strong>Status:</strong> {chromeAIStatus}</div>
             </div>
 
-            {chromeAIAvailable ? (
-              <Button
-                onClick={handleConnect}
-                loading={isConnecting}
-                variant="primary"
-                className="w-full"
-              >
-                <span className="text-xl">
-                  {connectionStatus === 'success' ? '✨' : connectionStatus === 'error' ? '⚠️' : '⚡'}
-                </span>
-                <span>
-                  {connectionStatus === 'success'
-                    ? 'Connected successfully!'
-                    : isConnecting
-                    ? 'Testing Chrome AI...'
-                    : 'Enable Chrome AI (FREE)'}
-                </span>
-              </Button>
-            ) : (
-              <div className="space-y-3">
-                <div className="error-box">
-                  <span className="material-symbols-outlined">warning</span>
-                  <span>Chrome AI is not available in your browser</span>
-                </div>
-                <div className="text-sm space-y-2">
-                  <p><strong>To enable Chrome AI:</strong></p>
-                  <ol className="list-decimal ml-4 space-y-1">
-                    <li>Use Chrome 127+ (Canary, Dev, or Beta)</li>
-                    <li>Go to <code className="bg-gray-100 px-1 rounded">chrome://flags</code></li>
-                    <li>Enable: <code className="bg-gray-100 px-1 rounded">Prompt API for Gemini Nano</code></li>
-                    <li>Enable: <code className="bg-gray-100 px-1 rounded">Optimization Guide On Device Model</code></li>
-                    <li>Restart Chrome</li>
-                  </ol>
-                </div>
-                <button
-                  onClick={openApiKeyPage}
-                  className="gemini-button secondary w-full"
-                >
-                  <span className="material-symbols-outlined">open_in_new</span>
-                  <span>Open Chrome Flags</span>
-                </button>
+            {!chromeAIAvailable && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
+                <div className="text-orange-900 font-medium mb-2">Setup Required:</div>
+                <ol className="list-decimal ml-4 space-y-1 text-orange-800 text-xs">
+                  <li>Use Chrome 127+</li>
+                  <li>Enable flags in chrome://flags</li>
+                  <li>Restart browser</li>
+                </ol>
               </div>
             )}
           </div>
@@ -405,46 +309,61 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
 
         {/* Status Messages */}
         {connectionStatus === 'error' && (
-          <div className="space-y-3">
-            <div className="error-box">
-              <span className="material-symbols-outlined">error</span>
-              <span>{errorMessage || 'Invalid API key. Please check and try again.'}</span>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="text-sm text-red-900">
+              {errorMessage || 'Invalid API key. Please check and try again.'}
             </div>
-
             {showSkipOption && (
-              <div className="space-y-2">
-                <div className="info-box-blue">
-                  <span>If you're confident your API key is correct, you can skip the test and proceed.</span>
-                </div>
-                <button
-                  onClick={handleSkipTest}
-                  className="gemini-button secondary"
-                >
-                  <span className="material-symbols-outlined">skip_next</span>
-                  <span>Skip Test & Continue</span>
-                </button>
-              </div>
+              <button
+                onClick={handleSkipTest}
+                className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+              >
+                Skip verification and continue anyway
+              </button>
             )}
           </div>
         )}
 
         {connectionStatus === 'success' && (
-          <div className="success-box">
-            <span className="material-symbols-outlined">check_circle</span>
-            <span>Successfully connected to {AIService.getProviderName(aiProvider)}! Moving to next step...</span>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-900">
+            ✓ Connected successfully!
           </div>
         )}
 
         {/* API Key Configured Indicator */}
         {apiKey && !isEditMode && connectionStatus === 'idle' && (
-          <div className="text-center">
-            <div className="status-indicator status-connected">
-              <span className="material-symbols-outlined">check_circle</span>
-              {AIService.getProviderName(aiProvider)} API Key Configured
-            </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center text-sm text-green-900">
+            ✓ API Key Configured
           </div>
         )}
       </div>
-    </>
+
+      {/* Fixed Footer with Action Button */}
+      <FixedFooter>
+        {showVerifyButton ? (
+          <Button
+            onClick={handleConnect}
+            disabled={aiProvider !== 'chromeai' && !inputValue.trim()}
+            loading={isConnecting}
+            variant="primary"
+            className="w-full"
+          >
+            <span>
+              {connectionStatus === 'success'
+                ? 'Connected!'
+                : isConnecting
+                ? 'Verifying...'
+                : aiProvider === 'chromeai'
+                ? 'Connect'
+                : 'Verify & Connect'}
+            </span>
+          </Button>
+        ) : (
+          <div className="text-center text-sm text-green-600">
+            ✓ Ready to continue
+          </div>
+        )}
+      </FixedFooter>
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks';
 import { UploadedDocument } from '@/types';
 import { DocumentParserFactory } from '@/utils/parsers/ParserFactory';
 import { CacheManager } from '@/storage';
-import { Header, Button, LoadingSpinner } from './ui';
+import { Header, Button, LoadingSpinner, FixedFooter } from './ui';
 import { DocumentUpload } from './DocumentUpload';
 
 interface DocumentSelectorProps {
@@ -17,7 +17,7 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
     <div className="flex flex-col h-full">
       <Header title="Upload Documents" onBack={onBack} />
 
-      <div className="flex-1 space-y-6 pb-24">
+      <div className="flex-1 space-y-4 pb-20">
         {/* Document Upload Component */}
         <DocumentUpload
           documents={documents}
@@ -25,24 +25,25 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
         />
 
         {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-          <span className="material-symbols-outlined text-blue-600 text-xl">lightbulb</span>
-          <div className="flex-1 text-sm text-blue-800">
-            Upload resumes, cover letters, or personal documents to help AI generate more accurate and personalized form responses.
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2">
+          <span className="material-symbols-outlined text-blue-500 text-base mt-0.5">info</span>
+          <div className="flex-1 text-xs text-gray-700">
+            Upload documents to help generate personalized responses
           </div>
         </div>
+      </div>
 
-        {/* Continue Button */}
+      {/* Fixed Footer with Continue Button */}
+      <FixedFooter>
         <Button
           onClick={onContinue}
           variant="primary"
-          size="lg"
           className="w-full"
         >
           <span>Continue</span>
           <span className="material-symbols-outlined">arrow_forward</span>
         </Button>
-      </div>
+      </FixedFooter>
     </div>
   );
 }
