@@ -72,12 +72,14 @@ export function App() {
   }, []);
 
   const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
+    console.log('[App] updateSettings called:', { newSettings, currentSettings: settings });
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
 
     try {
       // Save AI provider if changed
       if (newSettings.aiProvider !== undefined) {
+        console.log('[App] Saving provider:', newSettings.aiProvider);
         await StorageManager.setAIProvider(newSettings.aiProvider);
 
         // If provider changed, load that provider's API key (already decrypted)
@@ -90,7 +92,10 @@ export function App() {
 
       // Save API key if changed (StorageManager will encrypt it)
       if (newSettings.apiKey !== undefined) {
+        // IMPORTANT: Use updated.aiProvider which has the latest provider
+        console.log('[App] Saving API key:', { provider: updated.aiProvider, keyLength: newSettings.apiKey?.length });
         await StorageManager.setApiKey(updated.aiProvider, newSettings.apiKey);
+        console.log('[App] API key saved successfully');
       }
 
       // Save documents if changed
