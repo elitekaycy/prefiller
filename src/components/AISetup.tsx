@@ -161,7 +161,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   };
 
   const hasExistingKey = apiKey && !isEditMode;
-  const showVerifyButton = aiProvider === 'chromeai' || (!apiKey || isEditMode);
+  const showVerifyButton = aiProvider === 'chromeai' || isEditMode || inputValue.trim().length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -264,15 +264,17 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                   <button
                     type="button"
                     onClick={() => setIsEditMode(true)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    className="text-gray-500 hover:text-gray-700"
+                    aria-label="Edit API key"
                   >
-                    Edit
+                    <span className="material-symbols-outlined text-sm">edit</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
                   className="text-gray-500 hover:text-gray-700"
+                  aria-label={showKey ? 'Hide API key' : 'Show API key'}
                 >
                   <span className="material-symbols-outlined text-sm">
                     {showKey ? 'visibility' : 'visibility_off'}

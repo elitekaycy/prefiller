@@ -225,7 +225,6 @@
 **Requirements:**
 - [ ] Add ARIA labels to all interactive elements
 - [ ] Implement keyboard navigation (Tab, Enter, Escape)
-- [ ] Fix color contrast ratios (4.5:1 minimum)
 - [ ] Add skip links
 - [ ] Test with screen reader (NVDA/JAWS)
 - [ ] Add focus indicators
@@ -540,36 +539,7 @@
 
 ---
 
-#### **TICKET-017: Dark Mode Support** 🟢
-**Priority:** LOW
-**Effort:** 2 days
-**Status:** ❌ Not Started
-
-**Problem:**
-- Only light mode
-- Harsh on eyes at night
-
-**Requirements:**
-- [ ] Detect system theme preference
-- [ ] Add theme toggle
-- [ ] Create dark theme CSS
-- [ ] Persist user preference
-- [ ] Update all components
-
-**Acceptance Criteria:**
-- Auto-detects system theme
-- User can toggle manually
-- All components styled for dark mode
-
-**Files to Change:**
-- `src/popup/popup.css`
-- Add `src/hooks/useTheme.ts`
-- `src/storage/StorageSchema.ts`
-
-**Dependencies:** None
-
----
-
+#
 #### **TICKET-018: Keyboard Shortcuts** 🟢
 **Priority:** LOW
 **Effort:** 2 days
@@ -842,21 +812,6 @@
 - [ ] Auto-apply saved mappings
 
 ---
-
-#### **TICKET-031: Cloud Sync** 🟢
-**Priority:** LOW
-**Effort:** 10 days
-**Status:** ❌ Not Started
-
-**Requirements:**
-- [ ] Backend API
-- [ ] User authentication
-- [ ] Encrypted cloud storage
-- [ ] Sync documents across devices
-- [ ] Conflict resolution
-
----
-
 ## Sprint Planning
 
 ### Sprint 1 (Week 1): Security & Critical Fixes
