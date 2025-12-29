@@ -7,6 +7,7 @@ import { AIProvider, UploadedDocument } from '@/types';
 import { IStorageProvider } from './IStorageProvider';
 import { BrowserStorageProvider } from './BrowserStorageProvider';
 import { StorageKey, QuotaInfo, DocumentMetadata } from './StorageSchema';
+import { SecureEncryption } from '@/utils/secureEncryption';
 
 export class StorageManager {
   private static provider: IStorageProvider = new BrowserStorageProvider();
@@ -21,21 +22,30 @@ export class StorageManager {
   // ========== API Keys ==========
 
   /**
-   * Get API key for a provider
+   * Get API key for a provider (decrypts securely stored key)
    */
   static async getApiKey(provider: AIProvider): Promise<string | undefined> {
-    return this.provider.get(`apiKeys.${provider}` as StorageKey);
+    const encryptedKey = await this.provider.get(`apiKeys.${provider}` as StorageKey);
+    if (!encryptedKey) return undefined;
+
+    try {
+      return await SecureEncryption.decrypt(encryptedKey);
+    } catch (error) {
+      // If decryption fails, the key might be corrupted or from old format
+      throw new Error(`Failed to decrypt API key for ${provider}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   /**
-   * Set API key for a provider
+   * Set API key for a provider (encrypts before storing)
    */
   static async setApiKey(provider: AIProvider, key: string): Promise<void> {
-    await this.provider.set(`apiKeys.${provider}` as StorageKey, key);
+    const encryptedKey = await SecureEncryption.encrypt(key);
+    await this.provider.set(`apiKeys.${provider}` as StorageKey, encryptedKey);
   }
 
   /**
-   * Get all API keys
+   * Get all API keys (decrypted)
    */
   static async getAllApiKeys(): Promise<Partial<Record<AIProvider, string>>> {
     const providers: AIProvider[] = ['groq', 'claude', 'gemini', 'chromeai'];
@@ -46,8 +56,15 @@ export class StorageManager {
     );
 
     for (const provider of providers) {
-      const key = result[`apiKeys.${provider}`];
-      if (key) keys[provider] = key;
+      const encryptedKey = result[`apiKeys.${provider}`];
+      if (encryptedKey) {
+        try {
+          keys[provider] = await SecureEncryption.decrypt(encryptedKey);
+        } catch (error) {
+          // Skip corrupted keys
+          console.error(`Failed to decrypt API key for ${provider}:`, error);
+        }
+      }
     }
 
     return keys;
