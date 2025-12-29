@@ -135,22 +135,30 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
   };
 
   return (
-    <div className="bg-white rounded-lg p-4 border border-gray-200">
-      <h3 className="text-base font-semibold mb-3 text-gray-800">Documents</h3>
+    <div
+      className="rounded-lg p-4 border"
+      style={{
+        backgroundColor: 'var(--gemini-surface)',
+        borderColor: 'var(--gemini-border)'
+      }}
+    >
+      <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--gemini-text-primary)' }}>Documents</h3>
 
       <div
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          isDragging
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 hover:border-blue-300 bg-gray-50'
-        } ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}
+          isProcessing ? 'opacity-50 pointer-events-none' : ''
+        }`}
+        style={{
+          borderColor: isDragging ? 'var(--gemini-accent)' : 'var(--gemini-border)',
+          backgroundColor: isDragging ? 'rgba(138, 180, 248, 0.1)' : 'var(--gemini-bg)'
+        }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
       >
         <div className="space-y-2">
           <div className="text-2xl">{isProcessing ? '⏳' : '📄'}</div>
-          <div className="text-gray-600">
+          <div style={{ color: 'var(--gemini-text-secondary)' }}>
             {isProcessing ? (
               <div className="text-sm">
                 {parsingStatus || 'Processing document...'}
@@ -158,7 +166,7 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
             ) : (
               <>
                 Drag & drop documents here or{' '}
-                <label className="text-blue-600 hover:text-blue-800 cursor-pointer underline">
+                <label className="cursor-pointer underline" style={{ color: 'var(--gemini-accent)' }}>
                   browse files
                   <input
                     type="file"
@@ -176,39 +184,61 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
               </>
             )}
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm" style={{ color: 'var(--gemini-text-secondary)' }}>
             Supports: TXT, PDF, DOC, DOCX
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+        <div
+          className="mt-3 p-2 rounded-lg text-xs border"
+          style={{
+            backgroundColor: 'rgba(242, 139, 130, 0.1)',
+            borderColor: 'var(--gemini-error)',
+            color: 'var(--gemini-error)'
+          }}
+        >
           {error}
         </div>
       )}
 
       {parsingStatus && !isProcessing && (
-        <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+        <div
+          className="mt-3 p-2 rounded-lg text-xs border"
+          style={{
+            backgroundColor: 'rgba(129, 201, 149, 0.1)',
+            borderColor: 'var(--gemini-success)',
+            color: 'var(--gemini-success)'
+          }}
+        >
           {parsingStatus}
         </div>
       )}
 
       {documents.length > 0 && (
         <div className="mt-4 space-y-2">
-          <h4 className="font-medium text-gray-700">Uploaded Documents</h4>
+          <h4 className="font-medium" style={{ color: 'var(--gemini-text-primary)' }}>Uploaded Documents</h4>
           {documents.map((doc) => (
-            <div key={doc.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+            <div
+              key={doc.id}
+              className="flex items-center justify-between p-3 rounded-md border"
+              style={{
+                backgroundColor: 'var(--gemini-bg)',
+                borderColor: 'var(--gemini-border)'
+              }}
+            >
               <div className="flex items-center gap-2">
                 <span className="text-sm">📄</span>
-                <span className="text-sm font-medium">{doc.name}</span>
-                <span className="text-xs text-gray-500">
+                <span className="text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>{doc.name}</span>
+                <span className="text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
                   {new Date(doc.uploadedAt).toLocaleDateString()}
                 </span>
               </div>
               <button
                 onClick={() => removeDocument(doc.id)}
-                className="text-red-500 hover:text-red-700 text-sm"
+                className="text-sm"
+                style={{ color: 'var(--gemini-error)' }}
               >
                 Remove
               </button>

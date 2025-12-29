@@ -25,9 +25,15 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
         />
 
         {/* Info Box */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3 flex items-start gap-2">
-          <span className="material-symbols-outlined text-blue-500 text-base mt-0.5">info</span>
-          <div className="flex-1 text-xs text-gray-700">
+        <div
+          className="rounded-lg border p-3 flex items-start gap-2"
+          style={{
+            backgroundColor: 'rgba(138, 180, 248, 0.05)',
+            borderColor: 'var(--gemini-border)'
+          }}
+        >
+          <span className="material-symbols-outlined text-base mt-0.5" style={{ color: 'var(--gemini-accent)' }}>info</span>
+          <div className="flex-1 text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
             Upload documents to help generate personalized responses
           </div>
         </div>
@@ -38,6 +44,7 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
         <Button
           onClick={onContinue}
           variant="primary"
+          size="lg"
           className="w-full"
         >
           <span>Continue</span>

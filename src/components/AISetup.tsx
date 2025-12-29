@@ -290,14 +290,26 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         ) : (
           /* Chrome AI Setup */
           <div className="space-y-3">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-              <div className="text-blue-900"><strong>Status:</strong> {chromeAIStatus}</div>
+            <div
+              className="rounded-lg border p-3 text-sm"
+              style={{
+                backgroundColor: 'rgba(138, 180, 248, 0.1)',
+                borderColor: 'var(--gemini-accent)'
+              }}
+            >
+              <div style={{ color: 'var(--gemini-text-primary)' }}><strong>Status:</strong> {chromeAIStatus}</div>
             </div>
 
             {!chromeAIAvailable && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
-                <div className="text-orange-900 font-medium mb-2">Setup Required:</div>
-                <ol className="list-decimal ml-4 space-y-1 text-orange-800 text-xs">
+              <div
+                className="rounded-lg border p-3 text-sm"
+                style={{
+                  backgroundColor: 'rgba(253, 214, 99, 0.1)',
+                  borderColor: 'var(--gemini-warning)'
+                }}
+              >
+                <div className="font-medium mb-2" style={{ color: 'var(--gemini-warning)' }}>Setup Required:</div>
+                <ol className="list-decimal ml-4 space-y-1 text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
                   <li>Use Chrome 127+</li>
                   <li>Enable flags in chrome://flags</li>
                   <li>Restart browser</li>
@@ -309,14 +321,21 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
 
         {/* Status Messages */}
         {connectionStatus === 'error' && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <div className="text-sm text-red-900">
+          <div
+            className="rounded-lg border p-3"
+            style={{
+              backgroundColor: 'rgba(242, 139, 130, 0.1)',
+              borderColor: 'var(--gemini-error)'
+            }}
+          >
+            <div className="text-sm" style={{ color: 'var(--gemini-error)' }}>
               {errorMessage || 'Invalid API key. Please check and try again.'}
             </div>
             {showSkipOption && (
               <button
                 onClick={handleSkipTest}
-                className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+                className="mt-2 text-xs underline"
+                style={{ color: 'var(--gemini-error)' }}
               >
                 Skip verification and continue anyway
               </button>
@@ -325,14 +344,28 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         )}
 
         {connectionStatus === 'success' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-900">
+          <div
+            className="rounded-lg border p-3 text-sm"
+            style={{
+              backgroundColor: 'rgba(129, 201, 149, 0.1)',
+              borderColor: 'var(--gemini-success)',
+              color: 'var(--gemini-success)'
+            }}
+          >
             ✓ Connected successfully!
           </div>
         )}
 
         {/* API Key Configured Indicator */}
         {apiKey && !isEditMode && connectionStatus === 'idle' && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center text-sm text-green-900">
+          <div
+            className="rounded-lg border p-3 text-center text-sm"
+            style={{
+              backgroundColor: 'rgba(129, 201, 149, 0.1)',
+              borderColor: 'var(--gemini-success)',
+              color: 'var(--gemini-success)'
+            }}
+          >
             ✓ API Key Configured
           </div>
         )}
@@ -346,6 +379,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             disabled={aiProvider !== 'chromeai' && !inputValue.trim()}
             loading={isConnecting}
             variant="primary"
+            size="lg"
             className="w-full"
           >
             <span>
@@ -359,7 +393,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             </span>
           </Button>
         ) : (
-          <div className="text-center text-sm text-green-600">
+          <div className="text-center text-sm" style={{ color: 'var(--gemini-success)' }}>
             ✓ Ready to continue
           </div>
         )}

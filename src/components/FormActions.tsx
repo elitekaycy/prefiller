@@ -101,52 +101,66 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       <div className="flex-1 space-y-4 pb-20">
         {/* Status Overview */}
         <div className="grid grid-cols-2 gap-3">
-          <div className={`rounded-lg border p-3 text-center ${
-            hasApiKey
-              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-100'
-              : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
-          }`}>
+          <div
+            className="rounded-lg border p-3 text-center"
+            style={{
+              backgroundColor: hasApiKey ? 'rgba(129, 201, 149, 0.1)' : 'var(--gemini-surface)',
+              borderColor: hasApiKey ? 'var(--gemini-success)' : 'var(--gemini-border)'
+            }}
+          >
             <div className="flex flex-col items-center gap-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                hasApiKey ? 'bg-green-100' : 'bg-gray-100'
-              }`}>
-                <span className={`material-symbols-outlined text-base ${
-                  hasApiKey ? 'text-green-600' : 'text-gray-400'
-                }`}>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{
+                  backgroundColor: hasApiKey ? 'rgba(129, 201, 149, 0.2)' : 'var(--gemini-bg)'
+                }}
+              >
+                <span
+                  className="material-symbols-outlined text-base"
+                  style={{ color: hasApiKey ? 'var(--gemini-success)' : 'var(--gemini-text-secondary)' }}
+                >
                   {hasApiKey ? 'check_circle' : 'close'}
                 </span>
               </div>
               <div>
-                <div className="text-xs text-gray-600 font-medium">AI Provider</div>
-                <div className={`text-xs font-semibold ${
-                  hasApiKey ? 'text-green-700' : 'text-gray-500'
-                }`}>
+                <div className="text-xs font-medium" style={{ color: 'var(--gemini-text-secondary)' }}>AI Provider</div>
+                <div
+                  className="text-xs font-semibold"
+                  style={{ color: hasApiKey ? 'var(--gemini-success)' : 'var(--gemini-text-secondary)' }}
+                >
                   {hasApiKey ? 'Connected' : 'Not Set'}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className={`rounded-lg border p-3 text-center ${
-            hasDocuments
-              ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100'
-              : 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200'
-          }`}>
+          <div
+            className="rounded-lg border p-3 text-center"
+            style={{
+              backgroundColor: hasDocuments ? 'rgba(138, 180, 248, 0.1)' : 'var(--gemini-surface)',
+              borderColor: hasDocuments ? 'var(--gemini-accent)' : 'var(--gemini-border)'
+            }}
+          >
             <div className="flex flex-col items-center gap-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-between ${
-                hasDocuments ? 'bg-blue-100' : 'bg-gray-100'
-              }`}>
-                <span className={`material-symbols-outlined text-base ${
-                  hasDocuments ? 'text-blue-600' : 'text-gray-400'
-                }`}>
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{
+                  backgroundColor: hasDocuments ? 'rgba(138, 180, 248, 0.2)' : 'var(--gemini-bg)'
+                }}
+              >
+                <span
+                  className="material-symbols-outlined text-base"
+                  style={{ color: hasDocuments ? 'var(--gemini-accent)' : 'var(--gemini-text-secondary)' }}
+                >
                   {hasDocuments ? 'description' : 'close'}
                 </span>
               </div>
               <div>
-                <div className="text-xs text-gray-600 font-medium">Documents</div>
-                <div className={`text-xs font-semibold ${
-                  hasDocuments ? 'text-blue-700' : 'text-gray-500'
-                }`}>
+                <div className="text-xs font-medium" style={{ color: 'var(--gemini-text-secondary)' }}>Documents</div>
+                <div
+                  className="text-xs font-semibold"
+                  style={{ color: hasDocuments ? 'var(--gemini-accent)' : 'var(--gemini-text-secondary)' }}
+                >
                   {hasDocuments ? 'Loaded' : 'None'}
                 </div>
               </div>
@@ -156,7 +170,14 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
 
         {/* Status Message */}
         {!canUseFeatures && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center text-xs text-red-700">
+          <div
+            className="rounded-lg border p-3 text-center text-xs"
+            style={{
+              backgroundColor: 'rgba(242, 139, 130, 0.1)',
+              borderColor: 'var(--gemini-error)',
+              color: 'var(--gemini-error)'
+            }}
+          >
             {!hasApiKey ? 'AI provider not configured' : 'Extension disabled'}
           </div>
         )}
@@ -164,9 +185,15 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
         {/* Content Script Error */}
         {contentScriptStatus === 'failed' && (
           <div className="space-y-2">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-              <span className="material-symbols-outlined text-red-500 text-base">error</span>
-              <div className="flex-1 text-xs text-red-800">
+            <div
+              className="rounded-lg border p-3 flex items-start gap-2"
+              style={{
+                backgroundColor: 'rgba(242, 139, 130, 0.1)',
+                borderColor: 'var(--gemini-error)'
+              }}
+            >
+              <span className="material-symbols-outlined text-base" style={{ color: 'var(--gemini-error)' }}>error</span>
+              <div className="flex-1 text-xs" style={{ color: 'var(--gemini-error)' }}>
                 Content script failed. Try refreshing the page.
               </div>
             </div>
@@ -183,15 +210,21 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
         )}
 
         {/* Instructions */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3">
-          <div className="text-xs font-medium text-blue-900 mb-1.5">How to use:</div>
-          <ul className="text-xs text-gray-700 space-y-1">
+        <div
+          className="rounded-lg border p-3"
+          style={{
+            backgroundColor: 'rgba(138, 180, 248, 0.05)',
+            borderColor: 'var(--gemini-border)'
+          }}
+        >
+          <div className="text-xs font-medium mb-1.5" style={{ color: 'var(--gemini-accent)' }}>How to use:</div>
+          <ul className="text-xs space-y-1" style={{ color: 'var(--gemini-text-secondary)' }}>
             <li className="flex items-start gap-1.5">
-              <span className="text-blue-400 mt-0.5">•</span>
+              <span className="mt-0.5" style={{ color: 'var(--gemini-accent)' }}>•</span>
               <span>Click button to detect and fill form fields</span>
             </li>
             <li className="flex items-start gap-1.5">
-              <span className="text-blue-400 mt-0.5">•</span>
+              <span className="mt-0.5" style={{ color: 'var(--gemini-accent)' }}>•</span>
               <span>Review and adjust as needed</span>
             </li>
           </ul>
@@ -205,6 +238,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
           disabled={!canUseFeatures}
           loading={isProcessing}
           variant="primary"
+          size="lg"
           className="w-full"
         >
           <span className="material-symbols-outlined">auto_fix_high</span>
