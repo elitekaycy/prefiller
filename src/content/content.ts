@@ -248,6 +248,10 @@ class FormAnalyzer {
     try {
       const settings = await this.getSettings();
 
+      // Debug: Show what we got
+      this.showNotification(`Debug: Provider=${settings.aiProvider}, HasKey=${!!settings.apiKey}, KeyLen=${settings.apiKey?.length || 0}, Docs=${settings.documents.length}`, 'loading');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       if (!settings.aiProvider) {
         this.showNotification('Please configure your AI provider first!', 'error');
         return;
