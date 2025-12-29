@@ -27,11 +27,15 @@ export function detectBrowser(): BrowserType {
 /**
  * Get the appropriate browser extension API
  * Chrome uses chrome.*, Firefox uses browser.*
+ * Works in both window and service worker contexts
  */
 function getBrowserAPI(): any {
+  // Use globalThis to work in both window and service worker contexts
+  const globalScope = typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : window);
+
   // Firefox uses browser API
-  if (typeof (window as any).browser !== 'undefined') {
-    return (window as any).browser;
+  if (typeof (globalScope as any).browser !== 'undefined') {
+    return (globalScope as any).browser;
   }
 
   // Chrome/Edge use chrome API
