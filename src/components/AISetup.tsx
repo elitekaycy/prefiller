@@ -2,6 +2,9 @@ import { useState, useEffect } from 'preact/hooks';
 import { AIProvider } from '@/types';
 import { AIService } from '@/utils/aiService';
 import { ChromeAI } from '@/utils/chromeai';
+import { StorageManager } from '@/storage';
+import { EncryptionUtil } from '@/utils/encryption';
+import { Button } from './ui';
 
 interface AISetupProps {
   aiProvider: AIProvider;
@@ -20,12 +23,13 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   const [showSkipOption, setShowSkipOption] = useState(false);
   const [chromeAIAvailable, setChromeAIAvailable] = useState<boolean | null>(null);
   const [chromeAIStatus, setChromeAIStatus] = useState<string>('');
+  const [isEditMode, setIsEditMode] = useState(false); // For existing key editing
 
   useEffect(() => {
     setInputValue(apiKey);
+    setIsEditMode(false); // Reset edit mode when API key changes
   }, [apiKey]);
 
-  // Check Chrome AI availability on mount
   useEffect(() => {
     checkChromeAIAvailability();
   }, []);
@@ -34,11 +38,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
     const status = await ChromeAI.getAvailabilityStatus();
     setChromeAIAvailable(status.available);
     setChromeAIStatus(status.message);
-    console.log('Chrome AI availability:', status);
   };
 
   const handleSkipTest = () => {
-    // Skip the API test and proceed with the key
     onApiKeyChange(inputValue.trim());
     setConnectionStatus('success');
     setTimeout(() => {
@@ -46,12 +48,25 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
     }, 1500);
   };
 
-  const handleProviderChange = (provider: AIProvider) => {
+  const handleProviderChange = async (provider: AIProvider) => {
     onProviderChange(provider);
-    setInputValue('');
     setConnectionStatus('idle');
     setErrorMessage('');
     setShowSkipOption(false);
+    setIsEditMode(false);
+
+    // Load saved API key for this provider
+    try {
+      const savedKey = await StorageManager.getApiKey(provider);
+      if (savedKey) {
+        const decodedKey = EncryptionUtil.decode(savedKey);
+        setInputValue(decodedKey);
+      } else {
+        setInputValue('');
+      }
+    } catch (error) {
+      setInputValue('');
+    }
   };
 
   const handleConnect = async () => {
@@ -61,12 +76,11 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
       setConnectionStatus('idle');
 
       try {
-        console.log('Testing Chrome AI connection...');
         const aiService = new AIService('chromeai', '');
         const isValid = await aiService.testConnection();
 
         if (isValid) {
-          onApiKeyChange(''); // No API key needed
+          onApiKeyChange('');
           setConnectionStatus('success');
           setTimeout(() => {
             onComplete();
@@ -75,7 +89,6 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
           throw new Error('Chrome AI is not available. Please enable it in chrome://flags');
         }
       } catch (error) {
-        console.error('Chrome AI connection failed:', error);
         setConnectionStatus('error');
         setErrorMessage(error instanceof Error ? error.message : 'Chrome AI connection failed');
       } finally {
@@ -107,21 +120,19 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             expectedFormat = 'Groq API keys should start with "gsk_" and be at least 40 characters long';
             break;
         }
-        console.warn(`API key validation failed. Key length: ${trimmedKey.length}, starts with: ${trimmedKey.substring(0, 10)}...`);
         throw new Error(`Invalid API key format. ${expectedFormat}`);
       }
 
       // Test the API key
-      console.log(`Testing ${aiProvider} API key...`);
       const aiService = new AIService(aiProvider, trimmedKey);
 
       try {
         const isValid = await aiService.testConnection();
-        console.log(`API test result:`, isValid);
 
         if (isValid) {
           onApiKeyChange(trimmedKey);
           setConnectionStatus('success');
+          setIsEditMode(false);
           setTimeout(() => {
             onComplete();
           }, 1500);
@@ -129,15 +140,11 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
           throw new Error('API key validation failed - the key appears to be invalid or you may not have sufficient credits');
         }
       } catch (apiError) {
-        console.error('API test error:', apiError);
-
-        // If there's a specific API error, show it
         let errorMsg = 'API connection failed';
         if (apiError instanceof Error) {
           errorMsg = apiError.message;
         }
 
-        // For network errors, suggest skipping the test
         if (errorMsg.includes('fetch') || errorMsg.includes('network') || errorMsg.includes('NetworkError')) {
           errorMsg = 'Network error - unable to test API key. You can proceed anyway if you\'re sure the key is correct.';
         }
@@ -145,10 +152,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         throw new Error(errorMsg);
       }
     } catch (error) {
-      console.error('Connection failed:', error);
       setConnectionStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'Unknown error occurred');
-      setShowSkipOption(true); // Show skip option when test fails
+      setShowSkipOption(true);
     } finally {
       setIsConnecting(false);
     }
@@ -158,6 +164,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
     const url = AIService.getApiKeyUrl(aiProvider);
     window.open(url, '_blank');
   };
+
+  const hasExistingKey = apiKey && !isEditMode;
 
   return (
     <>
@@ -292,27 +300,40 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                 onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
                 placeholder={`Enter your ${AIService.getProviderName(aiProvider)} API key`}
                 className="input-field"
+                disabled={hasExistingKey}
               />
-              <button
-                type="button"
-                onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 transition-colors"
-                style={{ color: 'var(--gemini-text-secondary)' }}
-              >
-                <span className="material-symbols-outlined">
-                  {showKey ? 'visibility' : 'visibility_off'}
-                </span>
-              </button>
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                {hasExistingKey && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditMode(true)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="transition-colors"
+                  style={{ color: 'var(--gemini-text-secondary)' }}
+                >
+                  <span className="material-symbols-outlined">
+                    {showKey ? 'visibility' : 'visibility_off'}
+                  </span>
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={handleConnect}
-              disabled={!inputValue.trim() || isConnecting}
-              className={`gemini-button primary ${
-                connectionStatus === 'success' ? 'opacity-90' : ''
-              } ${!inputValue.trim() || isConnecting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <div className="flex items-center justify-center gap-3">
+            {/* Show verify button when: no existing key OR in edit mode OR key changed */}
+            {(!apiKey || isEditMode) && (
+              <Button
+                onClick={handleConnect}
+                disabled={!inputValue.trim()}
+                loading={isConnecting}
+                variant="primary"
+                className="w-full"
+              >
                 <span className="text-xl">
                   {connectionStatus === 'success' ? '✨' : connectionStatus === 'error' ? '⚠️' : '🔗'}
                 </span>
@@ -323,11 +344,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                     ? 'Verifying...'
                     : 'Verify & Connect'}
                 </span>
-                {isConnecting && (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                )}
-              </div>
-            </button>
+              </Button>
+            )}
           </div>
         ) : (
           /* Chrome AI Setup */
@@ -340,29 +358,23 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             </div>
 
             {chromeAIAvailable ? (
-              <button
+              <Button
                 onClick={handleConnect}
-                disabled={isConnecting}
-                className={`gemini-button primary ${
-                  connectionStatus === 'success' ? 'opacity-90' : ''
-                } ${isConnecting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                loading={isConnecting}
+                variant="primary"
+                className="w-full"
               >
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-xl">
-                    {connectionStatus === 'success' ? '✨' : connectionStatus === 'error' ? '⚠️' : '⚡'}
-                  </span>
-                  <span>
-                    {connectionStatus === 'success'
-                      ? 'Connected successfully!'
-                      : isConnecting
-                      ? 'Testing Chrome AI...'
-                      : 'Enable Chrome AI (FREE)'}
-                  </span>
-                  {isConnecting && (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  )}
-                </div>
-              </button>
+                <span className="text-xl">
+                  {connectionStatus === 'success' ? '✨' : connectionStatus === 'error' ? '⚠️' : '⚡'}
+                </span>
+                <span>
+                  {connectionStatus === 'success'
+                    ? 'Connected successfully!'
+                    : isConnecting
+                    ? 'Testing Chrome AI...'
+                    : 'Enable Chrome AI (FREE)'}
+                </span>
+              </Button>
             ) : (
               <div className="space-y-3">
                 <div className="error-box">
@@ -398,7 +410,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               <span className="material-symbols-outlined">error</span>
               <span>{errorMessage || 'Invalid API key. Please check and try again.'}</span>
             </div>
-            
+
             {showSkipOption && (
               <div className="space-y-2">
                 <div className="info-box-blue">
@@ -423,8 +435,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
           </div>
         )}
 
-        {/* API Key Status */}
-        {apiKey && connectionStatus === 'idle' && (
+        {/* API Key Configured Indicator */}
+        {apiKey && !isEditMode && connectionStatus === 'idle' && (
           <div className="text-center">
             <div className="status-indicator status-connected">
               <span className="material-symbols-outlined">check_circle</span>
