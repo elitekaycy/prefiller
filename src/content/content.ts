@@ -331,6 +331,14 @@ class FormAnalyzer {
       // Load API key for current provider (already decrypted by StorageManager)
       const apiKey = await StorageManager.getApiKey(aiProvider);
 
+      console.log('[Content Script] getSettings():', {
+        aiProvider,
+        hasApiKey: !!apiKey,
+        apiKeyLength: apiKey?.length || 0,
+        documentsCount: documents.length,
+        isEnabled
+      });
+
       return {
         aiProvider,
         apiKey: apiKey || '',
@@ -338,6 +346,7 @@ class FormAnalyzer {
         isEnabled,
       };
     } catch (error) {
+      console.error('[Content Script] getSettings() error:', error);
       // Fallback to defaults if loading fails
       return {
         aiProvider: 'claude',

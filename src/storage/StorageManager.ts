@@ -26,11 +26,16 @@ export class StorageManager {
    */
   static async getApiKey(provider: AIProvider): Promise<string | undefined> {
     const encryptedKey = await this.provider.get(`apiKeys.${provider}` as StorageKey);
+    console.log('[StorageManager] getApiKey:', { provider, hasEncryptedKey: !!encryptedKey });
+
     if (!encryptedKey) return undefined;
 
     try {
-      return await SecureEncryption.decrypt(encryptedKey);
+      const decrypted = await SecureEncryption.decrypt(encryptedKey);
+      console.log('[StorageManager] getApiKey decrypted:', { provider, decryptedLength: decrypted?.length || 0 });
+      return decrypted;
     } catch (error) {
+      console.error('[StorageManager] getApiKey decrypt error:', error);
       // If decryption fails, the key might be corrupted or from old format
       throw new Error(`Failed to decrypt API key for ${provider}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -40,8 +45,11 @@ export class StorageManager {
    * Set API key for a provider (encrypts before storing)
    */
   static async setApiKey(provider: AIProvider, key: string): Promise<void> {
+    console.log('[StorageManager] setApiKey:', { provider, keyLength: key?.length || 0 });
     const encryptedKey = await SecureEncryption.encrypt(key);
+    console.log('[StorageManager] setApiKey encrypted:', { provider, encryptedLength: encryptedKey?.length || 0 });
     await this.provider.set(`apiKeys.${provider}` as StorageKey, encryptedKey);
+    console.log('[StorageManager] setApiKey saved');
   }
 
   /**
