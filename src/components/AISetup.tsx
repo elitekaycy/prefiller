@@ -3,7 +3,6 @@ import { AIProvider } from '@/types';
 import { AIService } from '@/utils/aiService';
 import { ChromeAI } from '@/utils/chromeai';
 import { StorageManager } from '@/storage';
-import { EncryptionUtil } from '@/utils/encryption';
 import { Button, FixedFooter } from './ui';
 import { Toast } from '@/utils/toast';
 
@@ -56,15 +55,10 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
     setShowSkipOption(false);
     setIsEditMode(false);
 
-    // Load saved API key for this provider
+    // Load saved API key for this provider (already decrypted)
     try {
       const savedKey = await StorageManager.getApiKey(provider);
-      if (savedKey) {
-        const decodedKey = EncryptionUtil.decode(savedKey);
-        setInputValue(decodedKey);
-      } else {
-        setInputValue('');
-      }
+      setInputValue(savedKey || '');
     } catch (error) {
       setInputValue('');
     }

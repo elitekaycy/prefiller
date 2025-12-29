@@ -1,7 +1,6 @@
 import { FormField, ProviderError, ExtensionSettings, UploadedDocument } from '@/types';
 import { FormScraper, FieldMetadata } from './scraper';
 import { AIService } from '@/utils/aiService';
-import { EncryptionUtil } from '@/utils/encryption';
 import { TIMEOUTS, COLORS } from '@/config/constants';
 import { StorageManager } from '@/storage';
 
@@ -266,8 +265,8 @@ class FormAnalyzer {
         return;
       }
 
-      // Decode the API key if it's encoded (not needed for Chrome AI)
-      const decodedApiKey = settings.apiKey ? EncryptionUtil.decode(settings.apiKey) : '';
+      // API key is already decrypted from getSettings()
+      const decodedApiKey = settings.apiKey || '';
 
       if (this.scrapedFields.length === 0) {
         // Only show error in top frame to avoid duplicate notifications
@@ -329,13 +328,12 @@ class FormAnalyzer {
       const isEnabled = await StorageManager.getIsEnabled();
       const documents = await StorageManager.getDocuments();
 
-      // Load API key for current provider
+      // Load API key for current provider (already decrypted by StorageManager)
       const apiKey = await StorageManager.getApiKey(aiProvider);
-      const decodedApiKey = apiKey ? EncryptionUtil.decode(apiKey) : '';
 
       return {
         aiProvider,
-        apiKey: decodedApiKey,
+        apiKey: apiKey || '',
         documents,
         isEnabled,
       };

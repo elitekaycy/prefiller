@@ -3,7 +3,6 @@ import { AISetup } from '@/components/AISetup';
 import { DocumentSelector } from '@/components/DocumentSelector';
 import { FormActions } from '@/components/FormActions';
 import { ExtensionSettings, AIProvider } from '@/types';
-import { EncryptionUtil } from '@/utils/encryption';
 import { ChromeAI } from '@/utils/chromeai';
 import { StorageManager } from '@/storage';
 import { Toast, Toaster } from '@/utils/toast';
@@ -32,13 +31,12 @@ export function App() {
         const isEnabled = await StorageManager.getIsEnabled();
         const documents = await StorageManager.getDocuments();
 
-        // Load API key for current provider
+        // Load API key for current provider (already decrypted by StorageManager)
         const apiKey = await StorageManager.getApiKey(aiProvider);
-        const decodedApiKey = apiKey ? EncryptionUtil.decode(apiKey) : '';
 
         const loadedSettings: ExtensionSettings = {
           aiProvider,
-          apiKey: decodedApiKey,
+          apiKey: apiKey || '',
           documents,
           isEnabled,
         };
@@ -49,7 +47,7 @@ export function App() {
         // Chrome AI doesn't need API key, so check differently
         const hasValidSetup = aiProvider === 'chromeai'
           ? true
-          : (decodedApiKey && aiProvider);
+          : (apiKey && aiProvider);
 
         if (hasValidSetup) {
           setCurrentStep('documents');
@@ -82,18 +80,17 @@ export function App() {
       if (newSettings.aiProvider !== undefined) {
         await StorageManager.setAIProvider(newSettings.aiProvider);
 
-        // If provider changed, load that provider's API key
+        // If provider changed, load that provider's API key (already decrypted)
         if (newSettings.aiProvider !== settings.aiProvider) {
           const providerKey = await StorageManager.getApiKey(newSettings.aiProvider);
-          updated.apiKey = providerKey ? EncryptionUtil.decode(providerKey) : '';
+          updated.apiKey = providerKey || '';
           setSettings(updated);
         }
       }
 
-      // Save API key if changed (for current provider)
+      // Save API key if changed (StorageManager will encrypt it)
       if (newSettings.apiKey !== undefined) {
-        const encodedKey = EncryptionUtil.encode(newSettings.apiKey);
-        await StorageManager.setApiKey(updated.aiProvider, encodedKey);
+        await StorageManager.setApiKey(updated.aiProvider, newSettings.apiKey);
       }
 
       // Save documents if changed
