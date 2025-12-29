@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { Button, Header, FixedFooter } from './ui';
 
 interface FormActionsProps {
   isEnabled: boolean;
@@ -27,10 +28,8 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       const checkContentScript = async (tabId: number) => {
         try {
           await chrome.tabs.sendMessage(tabId, { action: 'PING' });
-          console.log('Content script is loaded and responding');
           return true;
         } catch (error) {
-          console.log('Content script not responding:', error);
           return false;
         }
       };
@@ -38,50 +37,37 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       // Helper function to inject content script if needed
       const ensureContentScript = async (tabId: number) => {
         const isLoaded = await checkContentScript(tabId);
-        
+
         if (!isLoaded) {
           try {
-            console.log('Attempting to inject content script...');
-            // Try to inject the content script
             await chrome.scripting.executeScript({
               target: { tabId },
               files: ['content.js']
             });
-            
-            // Wait a bit for the script to initialize
+
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Check again
+
             const isNowLoaded = await checkContentScript(tabId);
-            console.log('Content script loaded after injection:', isNowLoaded);
             if (!isNowLoaded) {
               throw new Error('Failed to load content script. Please refresh the page and try again.');
             }
           } catch (error) {
-            console.error('Content script injection failed:', error);
             throw new Error('Unable to inject content script. Please refresh the page and try again.');
           }
         }
       };
 
-      // Ensure content script is loaded
       await ensureContentScript(tab.id);
       setContentScriptStatus('loaded');
-
-      console.log('📡 Triggering form fill in all frames...');
 
       // Use executeScript to run in all frames (main + iframes)
       await chrome.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
         func: () => {
-          // This runs in each frame (main page AND all iframes)
           window.postMessage({ type: 'PREFILLER_FILL_FORMS' }, '*');
         }
       });
-
-      console.log('✅ Fill command sent to all frames');
     } catch (error) {
-      console.error('Error processing forms:', error);
       setContentScriptStatus('failed');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       alert(`Error: ${errorMessage}`);
@@ -105,113 +91,126 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
   const canUseFeatures = hasApiKey && isEnabled;
 
   return (
-    <>
-      <div className="step-header">
-        <div className="step-title">Ready to Fill Forms</div>
-        <div className="step-subtitle">
-          Analyze and fill forms with AI assistance
-        </div>
-      </div>
+    <div className="flex flex-col h-full">
+      <Header title="Ready to Fill" onBack={onBack} />
 
-      <div className="space-y-6">
+      <div className="flex-1 space-y-6 pb-24">
         {/* Status Overview */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="status-grid rounded-xl p-4 text-center">
-            <span className="material-symbols-outlined text-2xl mb-2">
-              {hasApiKey ? 'check_circle' : 'error'}
-            </span>
-            <div className="text-xs text-gray-600">API Key</div>
-            <div className={`text-sm font-medium ${hasApiKey ? 'text-green-400' : 'text-red-400'}`}>
-              {hasApiKey ? 'Connected' : 'Missing'}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                hasApiKey ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                <span className={`material-symbols-outlined ${
+                  hasApiKey ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {hasApiKey ? 'check_circle' : 'error'}
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 font-medium">AI Provider</div>
+                <div className={`text-sm font-semibold ${
+                  hasApiKey ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {hasApiKey ? 'Connected' : 'Not Set'}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="status-grid rounded-xl p-4 text-center">
-            <span className="material-symbols-outlined text-2xl mb-2">description</span>
-            <div className="text-xs text-gray-600">Documents</div>
-            <div className={`text-sm font-medium ${hasDocuments ? 'text-green-400' : 'text-yellow-400'}`}>
-              {hasDocuments ? `${hasDocuments} loaded` : 'Optional'}
+          <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                hasDocuments ? 'bg-blue-100' : 'bg-gray-100'
+              }`}>
+                <span className={`material-symbols-outlined ${
+                  hasDocuments ? 'text-blue-600' : 'text-gray-400'
+                }`}>
+                  description
+                </span>
+              </div>
+              <div>
+                <div className="text-xs text-gray-600 font-medium">Documents</div>
+                <div className={`text-sm font-semibold ${
+                  hasDocuments ? 'text-blue-600' : 'text-gray-500'
+                }`}>
+                  {hasDocuments ? 'Loaded' : 'None'}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Extension Toggle */}
-        <div className="flex items-center justify-between status-grid rounded-xl p-4">
-          <div>
-            <div className="text-gray-200 font-medium">Auto-Fill Mode</div>
-            <div className="text-xs text-gray-400">Enable form filling assistance</div>
-          </div>
-          <button
-            onClick={() => onToggle(!isEnabled)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              isEnabled
-                ? 'bg-blue-500'
-                : 'bg-gray-600'
-            }`}
+        {/* Main Action */}
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <Button
+            onClick={handleAnalyzeAndFill}
+            disabled={!canUseFeatures}
+            loading={isProcessing}
+            variant="primary"
+            size="lg"
+            className="w-full"
           >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                isEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
+            <span className="material-symbols-outlined">auto_fix_high</span>
+            <span>{isProcessing ? 'Processing...' : 'Analyze & Fill Forms'}</span>
+          </Button>
+
+          {/* Status Message */}
+          <div className="mt-4 text-center">
+            {!canUseFeatures ? (
+              <div className="text-sm text-red-600">
+                {!hasApiKey ? '⚠️ AI provider not configured' : '⚠️ Extension disabled'}
+              </div>
+            ) : (
+              <div className="text-xs text-gray-500">
+                Click to detect and auto-fill form fields on this page
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Action Button */}
-        <button
-          onClick={handleAnalyzeAndFill}
-          disabled={!canUseFeatures || isProcessing}
-          className={`gemini-button primary w-full ${!canUseFeatures ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <span className="material-symbols-outlined">auto_fix_high</span>
-          <span>{isProcessing ? 'Processing...' : 'Analyze & Fill Forms'}</span>
-          {isProcessing && (
-            <div className="w-4 h-4 border-2 border-gray-800 border-t-transparent rounded-full animate-spin"></div>
-          )}
-        </button>
-
-        {/* Content Script Status & Refresh Button */}
+        {/* Content Script Error */}
         {contentScriptStatus === 'failed' && (
           <div className="space-y-3">
-            <div className="error-box">
-              <span className="material-symbols-outlined">error</span>
-              <span>Content script failed to load. This may happen on some websites with strict security policies.</span>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+              <span className="material-symbols-outlined text-red-600">error</span>
+              <div className="flex-1 text-sm text-red-800">
+                Content script failed to load. This may happen on some websites with strict security policies.
+              </div>
             </div>
-            <button
+            <Button
               onClick={handleRefreshPage}
-              className="gemini-button secondary w-full"
+              variant="secondary"
+              className="w-full"
             >
               <span className="material-symbols-outlined">refresh</span>
               <span>Refresh Page & Try Again</span>
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Instructions */}
-        {canUseFeatures ? (
-          <div className="info-box">
-            <div className="info-box-title">How to use:</div>
-            <div className="text-xs space-y-1">
-              <div>• Click "Analyze & Fill Forms" to detect and auto-complete form fields</div>
-              <div>• Review and adjust the generated content as needed</div>
-              <div>• The extension uses your personal documents for context</div>
-            </div>
-          </div>
-        ) : (
-          <div className="error-box">
-            <span className="material-symbols-outlined">error</span>
-            <span>{!hasApiKey ? 'API key required to use form filling features' : 'Enable auto-fill mode to continue'}</span>
-          </div>
-        )}
-
-        {/* Back Button */}
-        <button
-          onClick={onBack}
-          className="gemini-button w-full"
-        >
-          ← Back to Documents
-        </button>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="text-sm font-medium text-blue-900 mb-2">💡 How to use:</div>
+          <ul className="text-xs text-blue-800 space-y-1.5">
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">•</span>
+              <span>Click "Analyze & Fill Forms" to detect and auto-complete form fields</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">•</span>
+              <span>Review and adjust the generated content as needed</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">•</span>
+              <span>Upload documents for better context and accuracy</span>
+            </li>
+          </ul>
+        </div>
       </div>
-    </>
+
+      {/* Fixed Footer removed - no longer needed since back button is in header */}
+    </div>
   );
 }
