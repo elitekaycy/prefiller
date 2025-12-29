@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { UploadedDocument } from '@/types';
 import { DocumentParserFactory } from '@/utils/parsers/ParserFactory';
 import { CacheManager, StorageManager } from '@/storage';
+import { FileValidator } from '@/utils/fileValidation';
 
 interface DocumentUploadProps {
   documents: UploadedDocument[];
@@ -18,12 +19,26 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
     setIsProcessing(true);
     setError(null);
     const newDocuments: UploadedDocument[] = [];
+    const errors: string[] = [];
 
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setParsingStatus(`Processing ${file.name}...`);
+        setParsingStatus(`Validating ${file.name}...`);
 
+        // Validate file before processing
+        const validation = await FileValidator.validate(file);
+        if (!validation.valid) {
+          errors.push(`${file.name}: ${validation.error}`);
+          continue;
+        }
+
+        // Show warnings if any
+        if (validation.warnings && validation.warnings.length > 0) {
+          console.warn(`Warnings for ${file.name}:`, validation.warnings);
+        }
+
+        setParsingStatus(`Processing ${file.name}...`);
         const documentId = Date.now().toString() + i;
 
         // Check if we have cached parsed data for this file
@@ -66,8 +81,13 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
 
       onDocumentsChange([...documents, ...newDocuments]);
 
-      // Clear status after a delay
-      setTimeout(() => setParsingStatus(''), 3000);
+      // Show validation errors if any
+      if (errors.length > 0) {
+        setError(errors.join('\n'));
+      } else {
+        // Clear status after a delay if no errors
+        setTimeout(() => setParsingStatus(''), 3000);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to process document';
       setError(errorMsg);

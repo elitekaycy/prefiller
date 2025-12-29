@@ -6,6 +6,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { ParsedDocumentData } from '@/types';
 import { BaseDocumentParser } from './BaseDocumentParser';
+import { FileValidator } from '@/utils/fileValidation';
 
 // Configure PDF.js worker - use local bundled worker for Chrome extension
 if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
@@ -31,10 +32,19 @@ export class PDFParser extends BaseDocumentParser {
   async parse(file: File): Promise<ParsedDocumentData> {
     try {
       // Extract text from PDF using PDF.js
-      const rawText = await this.extractTextFromPDF(file);
+      const extractedText = await this.extractTextFromPDF(file);
 
-      if (rawText.trim().length === 0) {
+      if (extractedText.trim().length === 0) {
         throw new Error('No text found in PDF. Please ensure your PDF has selectable text (not scanned images).');
+      }
+
+      // Sanitize extracted text to prevent XSS and other vulnerabilities
+      const rawText = FileValidator.sanitizeText(extractedText);
+
+      // Check for suspicious content and warn
+      const suspiciousCheck = FileValidator.hasSuspiciousContent(extractedText);
+      if (suspiciousCheck.suspicious) {
+        console.warn('Suspicious patterns detected in PDF content:', suspiciousCheck.patterns);
       }
 
       // Extract information using base class methods

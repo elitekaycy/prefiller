@@ -5,6 +5,7 @@
 
 import { ParsedDocumentData } from '@/types';
 import { BaseDocumentParser } from './BaseDocumentParser';
+import { FileValidator } from '@/utils/fileValidation';
 
 export class TXTParser extends BaseDocumentParser {
   getName(): string {
@@ -20,7 +21,17 @@ export class TXTParser extends BaseDocumentParser {
   }
 
   async parse(file: File): Promise<ParsedDocumentData> {
-    const text = await file.text();
+    const extractedText = await file.text();
+
+    // Sanitize extracted text to prevent XSS
+    const text = FileValidator.sanitizeText(extractedText);
+
+    // Check for suspicious content
+    const suspiciousCheck = FileValidator.hasSuspiciousContent(extractedText);
+    if (suspiciousCheck.suspicious) {
+      console.warn('Suspicious patterns detected in text file:', suspiciousCheck.patterns);
+    }
+
     const rawText = text;
 
     // Extract basic information using base class methods
