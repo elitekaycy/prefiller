@@ -39,8 +39,8 @@ function getBrowserAPI(): any {
   }
 
   // Chrome/Edge use chrome API
-  if (typeof chrome !== 'undefined') {
-    return chrome;
+  if (typeof (globalScope as any).chrome !== 'undefined') {
+    return (globalScope as any).chrome;
   }
 
   throw new Error('No browser extension API available');
