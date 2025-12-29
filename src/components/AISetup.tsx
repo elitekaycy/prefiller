@@ -10,7 +10,7 @@ interface AISetupProps {
   aiProvider: AIProvider;
   apiKey: string;
   onProviderChange: (provider: AIProvider) => void;
-  onApiKeyChange: (apiKey: string) => void;
+  onApiKeyChange: (apiKey: string) => void | Promise<void>;
   onComplete: () => void;
 }
 
@@ -40,12 +40,18 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
     setChromeAIStatus(status.message);
   };
 
-  const handleSkipTest = () => {
-    onApiKeyChange(inputValue.trim());
-    setConnectionStatus('success');
-    setTimeout(() => {
-      onComplete();
-    }, 1500);
+  const handleSkipTest = async () => {
+    try {
+      await onApiKeyChange(inputValue.trim());
+      setConnectionStatus('success');
+      setTimeout(() => {
+        onComplete();
+      }, 1500);
+    } catch (error) {
+      Toast.error('Failed to save API key');
+      setConnectionStatus('error');
+      setErrorMessage('Failed to save API key. Please try again.');
+    }
   };
 
   const handleProviderChange = async (provider: AIProvider) => {
@@ -75,7 +81,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         const isValid = await aiService.testConnection();
 
         if (isValid) {
-          onApiKeyChange('');
+          await onApiKeyChange('');
           setConnectionStatus('success');
           setTimeout(() => {
             onComplete();
@@ -125,7 +131,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         const isValid = await aiService.testConnection();
 
         if (isValid) {
-          onApiKeyChange(trimmedKey);
+          await onApiKeyChange(trimmedKey);
           setConnectionStatus('success');
           setIsEditMode(false);
           setTimeout(() => {
