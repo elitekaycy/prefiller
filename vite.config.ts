@@ -20,8 +20,7 @@ export default defineConfig({
           }
           return '[name].[ext]';
         },
-        format: 'es', // ES modules format for content scripts
-        inlineDynamicImports: false // Explicitly disable for multiple inputs
+        format: 'es', // ES modules format
       }
     },
     outDir: 'dist',
