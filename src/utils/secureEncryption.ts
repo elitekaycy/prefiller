@@ -5,15 +5,30 @@
  * Each encryption uses a random IV (Initialization Vector) for added security.
  *
  * Architecture:
- * - Master key is generated once and stored in chrome.storage.local
+ * - Master key is generated once and stored in browser storage
  * - Each encrypted value stores: [IV (12 bytes) + encrypted data]
  * - AES-256-GCM provides both encryption and authentication
  */
+
+import { BrowserAPI } from './browserApi';
 
 interface EncryptedData {
   iv: string; // Base64 encoded IV
   data: string; // Base64 encoded encrypted data
 }
+
+/**
+ * Get the crypto object (works in both window and service worker contexts)
+ */
+const getCrypto = (): Crypto => {
+  if (typeof self !== 'undefined' && self.crypto) {
+    return self.crypto;
+  }
+  if (typeof globalThis !== 'undefined' && globalThis.crypto) {
+    return globalThis.crypto;
+  }
+  throw new Error('Web Crypto API not available');
+};
 
 export class SecureEncryption {
   private static readonly ALGORITHM = 'AES-GCM';
@@ -32,13 +47,15 @@ export class SecureEncryption {
     }
 
     try {
+      const cryptoApi = getCrypto();
+
       // Try to load existing master key from storage
-      const stored = await chrome.storage.local.get(this.MASTER_KEY_STORAGE_KEY);
+      const stored = await BrowserAPI.storage.local.get(this.MASTER_KEY_STORAGE_KEY);
 
       if (stored[this.MASTER_KEY_STORAGE_KEY]) {
         // Import existing key
         const keyData = this.base64ToArrayBuffer(stored[this.MASTER_KEY_STORAGE_KEY]);
-        this.masterKey = await crypto.subtle.importKey(
+        this.masterKey = await cryptoApi.subtle.importKey(
           'raw',
           keyData,
           { name: this.ALGORITHM, length: this.KEY_LENGTH },
@@ -47,16 +64,16 @@ export class SecureEncryption {
         );
       } else {
         // Generate new master key
-        this.masterKey = await crypto.subtle.generateKey(
+        this.masterKey = await cryptoApi.subtle.generateKey(
           { name: this.ALGORITHM, length: this.KEY_LENGTH },
           true,
           ['encrypt', 'decrypt']
         );
 
         // Export and store the key
-        const exportedKey = await crypto.subtle.exportKey('raw', this.masterKey);
+        const exportedKey = await cryptoApi.subtle.exportKey('raw', this.masterKey);
         const keyBase64 = this.arrayBufferToBase64(exportedKey);
-        await chrome.storage.local.set({ [this.MASTER_KEY_STORAGE_KEY]: keyBase64 });
+        await BrowserAPI.storage.local.set({ [this.MASTER_KEY_STORAGE_KEY]: keyBase64 });
       }
 
       return this.masterKey;
@@ -72,17 +89,18 @@ export class SecureEncryption {
    */
   static async encrypt(plaintext: string): Promise<string> {
     try {
+      const cryptoApi = getCrypto();
       const key = await this.getMasterKey();
 
       // Generate random IV
-      const iv = crypto.getRandomValues(new Uint8Array(this.IV_LENGTH));
+      const iv = cryptoApi.getRandomValues(new Uint8Array(this.IV_LENGTH));
 
       // Convert plaintext to ArrayBuffer
       const encoder = new TextEncoder();
       const data = encoder.encode(plaintext);
 
       // Encrypt
-      const encryptedData = await crypto.subtle.encrypt(
+      const encryptedData = await cryptoApi.subtle.encrypt(
         { name: this.ALGORITHM, iv },
         key,
         data
@@ -107,6 +125,7 @@ export class SecureEncryption {
    */
   static async decrypt(encryptedString: string): Promise<string> {
     try {
+      const cryptoApi = getCrypto();
       const key = await this.getMasterKey();
 
       // Parse encrypted data
@@ -117,7 +136,7 @@ export class SecureEncryption {
       const dataBuffer = this.base64ToArrayBuffer(data);
 
       // Decrypt
-      const decryptedData = await crypto.subtle.decrypt(
+      const decryptedData = await cryptoApi.subtle.decrypt(
         { name: this.ALGORITHM, iv: ivBuffer },
         key,
         dataBuffer
@@ -172,6 +191,6 @@ export class SecureEncryption {
    */
   static async clearMasterKey(): Promise<void> {
     this.masterKey = null;
-    await chrome.storage.local.remove(this.MASTER_KEY_STORAGE_KEY);
+    await BrowserAPI.storage.local.remove(this.MASTER_KEY_STORAGE_KEY);
   }
 }
