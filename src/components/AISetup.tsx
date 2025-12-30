@@ -183,15 +183,15 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         <div className="space-y-3">
           <label className="text-sm font-medium text-gray-700">AI Provider</label>
           <div className="grid grid-cols-1 gap-3">
-            {/* Claude Option */}
+            {/* Groq Option - RECOMMENDED */}
             <div
-              className={`provider-card ${aiProvider === 'claude' ? 'selected' : ''}`}
-              onClick={() => handleProviderChange('claude')}
+              className={`provider-card ${aiProvider === 'groq' ? 'selected' : ''}`}
+              onClick={() => handleProviderChange('groq')}
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">Anthropic Claude</div>
-                <div className={`radio ${aiProvider === 'claude' ? 'checked' : ''}`}>
-                  {aiProvider === 'claude' && <div className="radio-dot"></div>}
+                <div className="provider-name">Groq <span className="text-sm text-blue-600 font-semibold">(RECOMMENDED)</span></div>
+                <div className={`radio ${aiProvider === 'groq' ? 'checked' : ''}`}>
+                  {aiProvider === 'groq' && <div className="radio-dot"></div>}
                 </div>
               </div>
             </div>
@@ -209,15 +209,39 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               </div>
             </div>
 
-            {/* Groq Option - FREE */}
+            {/* OpenRouter Option - DISABLED */}
             <div
-              className={`provider-card ${aiProvider === 'groq' ? 'selected' : ''}`}
-              onClick={() => handleProviderChange('groq')}
+              className="provider-card opacity-50 cursor-not-allowed"
+              style={{ pointerEvents: 'none' }}
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">Groq <span className="text-sm text-blue-600">(FREE)</span></div>
-                <div className={`radio ${aiProvider === 'groq' ? 'checked' : ''}`}>
-                  {aiProvider === 'groq' && <div className="radio-dot"></div>}
+                <div className="provider-name">OpenRouter <span className="text-sm text-gray-500">(DISABLED)</span></div>
+                <div className="radio">
+                </div>
+              </div>
+            </div>
+
+            {/* HuggingFace Option - DISABLED */}
+            <div
+              className="provider-card opacity-50 cursor-not-allowed"
+              style={{ pointerEvents: 'none' }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="provider-name">HuggingFace <span className="text-sm text-gray-500">(DISABLED)</span></div>
+                <div className="radio">
+                </div>
+              </div>
+            </div>
+
+            {/* Claude Option - TESTING */}
+            <div
+              className={`provider-card ${aiProvider === 'claude' ? 'selected' : ''}`}
+              onClick={() => handleProviderChange('claude')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="provider-name">Anthropic Claude <span className="text-sm text-gray-500">(TESTING)</span></div>
+                <div className={`radio ${aiProvider === 'claude' ? 'checked' : ''}`}>
+                  {aiProvider === 'claude' && <div className="radio-dot"></div>}
                 </div>
               </div>
             </div>

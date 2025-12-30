@@ -10,7 +10,7 @@ export const AI_CONFIG = {
   // Model names for each provider
   GROQ_MODEL: 'llama-3.3-70b-versatile',
   CLAUDE_MODEL: 'claude-3-5-sonnet-20241022',
-  GEMINI_MODEL: 'gemini-pro',
+  GEMINI_MODEL: 'gemini-2.5-flash',
 
   // Default AI generation parameters
   DEFAULT_TEMPERATURE: 0.4,
@@ -68,7 +68,7 @@ export const STORAGE_KEYS = {
 export const API_ENDPOINTS = {
   GROQ: 'https://api.groq.com/openai/v1/chat/completions',
   CLAUDE: 'https://api.anthropic.com/v1/messages',
-  GEMINI: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+  GEMINI: 'https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent',
 } as const;
 
 /**

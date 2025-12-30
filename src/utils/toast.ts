@@ -14,15 +14,17 @@ export const Toast = {
       duration,
       position: 'bottom-center',
       style: {
-        background: '#10b981',
-        color: '#fff',
+        background: '#ffffff',
+        color: '#1f2937',
         padding: '12px 16px',
         borderRadius: '8px',
         fontSize: '14px',
+        borderBottom: '3px solid #10b981',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
       iconTheme: {
-        primary: '#fff',
-        secondary: '#10b981',
+        primary: '#10b981',
+        secondary: '#fff',
       },
     });
   },
@@ -35,15 +37,17 @@ export const Toast = {
       duration,
       position: 'bottom-center',
       style: {
-        background: '#ef4444',
-        color: '#fff',
+        background: '#ffffff',
+        color: '#1f2937',
         padding: '12px 16px',
         borderRadius: '8px',
         fontSize: '14px',
+        borderBottom: '3px solid #ef4444',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
       iconTheme: {
-        primary: '#fff',
-        secondary: '#ef4444',
+        primary: '#ef4444',
+        secondary: '#fff',
       },
     });
   },
@@ -55,11 +59,17 @@ export const Toast = {
     return toast.loading(message, {
       position: 'bottom-center',
       style: {
-        background: '#3b82f6',
-        color: '#fff',
+        background: '#ffffff',
+        color: '#1f2937',
         padding: '12px 16px',
         borderRadius: '8px',
         fontSize: '14px',
+        borderBottom: '3px solid #3b82f6',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      },
+      iconTheme: {
+        primary: '#3b82f6',
+        secondary: '#fff',
       },
     });
   },
@@ -73,11 +83,13 @@ export const Toast = {
       position: 'bottom-center',
       icon: 'ℹ️',
       style: {
-        background: '#3b82f6',
-        color: '#fff',
+        background: '#ffffff',
+        color: '#1f2937',
         padding: '12px 16px',
         borderRadius: '8px',
         fontSize: '14px',
+        borderBottom: '3px solid #3b82f6',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
     });
   },
@@ -91,11 +103,13 @@ export const Toast = {
       position: 'bottom-center',
       icon: '⚠️',
       style: {
-        background: '#f59e0b',
-        color: '#fff',
+        background: '#ffffff',
+        color: '#1f2937',
         padding: '12px 16px',
         borderRadius: '8px',
         fontSize: '14px',
+        borderBottom: '3px solid #f59e0b',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
     });
   },
