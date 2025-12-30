@@ -7,6 +7,7 @@ import { Button, FixedFooter } from './ui';
 import { Toast } from '@/utils/toast';
 import { UsageTracker } from '@/utils/usageTracker';
 import { UsageStats } from '@/storage/StorageSchema';
+import { KEYS } from '@/utils/accessibility';
 
 interface AISetupProps {
   aiProvider: AIProvider;
@@ -90,6 +91,45 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
       setInputValue(savedKey || '');
     } catch (error) {
       setInputValue('');
+    }
+  };
+
+  // Keyboard navigation for provider selection (roving tabindex pattern)
+  const handleProviderKeyDown = (e: KeyboardEvent, provider: AIProvider) => {
+    const providers: AIProvider[] = ['groq', 'gemini', 'claude', 'chromeai'];
+    const currentIndex = providers.indexOf(aiProvider);
+    let newIndex = currentIndex;
+
+    switch (e.key) {
+      case KEYS.ARROW_DOWN:
+      case KEYS.ARROW_RIGHT:
+        e.preventDefault();
+        newIndex = (currentIndex + 1) % providers.length;
+        handleProviderChange(providers[newIndex]);
+        // Focus next card
+        setTimeout(() => {
+          const nextCard = document.querySelector(`[data-provider="${providers[newIndex]}"]`) as HTMLElement;
+          nextCard?.focus();
+        }, 0);
+        break;
+
+      case KEYS.ARROW_UP:
+      case KEYS.ARROW_LEFT:
+        e.preventDefault();
+        newIndex = (currentIndex - 1 + providers.length) % providers.length;
+        handleProviderChange(providers[newIndex]);
+        // Focus previous card
+        setTimeout(() => {
+          const prevCard = document.querySelector(`[data-provider="${providers[newIndex]}"]`) as HTMLElement;
+          prevCard?.focus();
+        }, 0);
+        break;
+
+      case KEYS.ENTER:
+      case KEYS.SPACE:
+        e.preventDefault();
+        handleProviderChange(provider);
+        break;
     }
   };
 
@@ -214,6 +254,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               aria-label="Groq - Recommended provider for fast, reliable AI processing"
               className={`provider-card ${aiProvider === 'groq' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('groq')}
+              onKeyDown={(e) => handleProviderKeyDown(e as any, 'groq')}
+              data-provider="groq"
+              tabIndex={aiProvider === 'groq' ? 0 : -1}
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">Groq <span className="text-sm text-blue-600 font-semibold" aria-hidden="true">(RECOMMENDED)</span></div>
@@ -231,6 +274,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               aria-label="Google Gemini - AI provider by Google"
               className={`provider-card ${aiProvider === 'gemini' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('gemini')}
+              onKeyDown={(e) => handleProviderKeyDown(e as any, 'gemini')}
+              data-provider="gemini"
+              tabIndex={aiProvider === 'gemini' ? 0 : -1}
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">Google Gemini</div>
@@ -282,6 +328,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               aria-label="Anthropic Claude - AI provider currently in testing"
               className={`provider-card ${aiProvider === 'claude' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('claude')}
+              onKeyDown={(e) => handleProviderKeyDown(e as any, 'claude')}
+              data-provider="claude"
+              tabIndex={aiProvider === 'claude' ? 0 : -1}
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">Anthropic Claude <span className="text-sm text-gray-500" aria-hidden="true">(TESTING)</span></div>
@@ -299,6 +348,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               aria-label={`Chrome AI - Free local AI processing${chromeAIAvailable === true ? ' - Available' : chromeAIAvailable === false ? ' - Setup required' : ''}`}
               className={`provider-card ${aiProvider === 'chromeai' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('chromeai')}
+              onKeyDown={(e) => handleProviderKeyDown(e as any, 'chromeai')}
+              data-provider="chromeai"
+              tabIndex={aiProvider === 'chromeai' ? 0 : -1}
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">
@@ -307,7 +359,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                   {chromeAIAvailable === false && <span className="text-orange-600 ml-2 text-sm" aria-hidden="true">Setup Required</span>}
                 </div>
                 <div className={`radio ${aiProvider === 'chromeai' ? 'checked' : ''}`} aria-hidden="true">
-                  {aiProvider === 'chromeai' && <div className="radio-dot"></div>}
+                  {aiProvider === 'chromeai' ? <div className="radio-dot"></div> : null}
                 </div>
               </div>
             </button>

@@ -3,6 +3,7 @@ import { UploadedDocument } from '@/types';
 import { DocumentParserFactory } from '@/utils/parsers/ParserFactory';
 import { CacheManager, StorageManager } from '@/storage';
 import { FileValidator } from '@/utils/fileValidation';
+import { KEYS } from '@/utils/accessibility';
 
 interface DocumentUploadProps {
   documents: UploadedDocument[];
@@ -114,6 +115,14 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
 
   const removeDocument = (id: string) => {
     onDocumentsChange(documents.filter(doc => doc.id !== id));
+  };
+
+  // Keyboard handler for document removal
+  const handleDocumentKeyDown = (e: KeyboardEvent, docId: string) => {
+    if (e.key === KEYS.DELETE || e.key === KEYS.BACKSPACE) {
+      e.preventDefault();
+      removeDocument(docId);
+    }
   };
 
   const handleDrop = (e: DragEvent) => {
@@ -235,11 +244,14 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
               <li
                 key={doc.id}
                 role="listitem"
+                tabIndex={0}
+                onKeyDown={(e) => handleDocumentKeyDown(e as any, doc.id)}
                 className="flex items-center justify-between p-3 rounded-md border"
                 style={{
                   backgroundColor: 'var(--gemini-bg)',
                   borderColor: 'var(--gemini-border)'
                 }}
+                aria-label={`${doc.name}, uploaded ${new Date(doc.uploadedAt).toLocaleDateString()}, press Delete or Backspace to remove`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm" aria-hidden="true">📄</span>

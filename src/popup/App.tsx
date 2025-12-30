@@ -6,6 +6,7 @@ import { ExtensionSettings, AIProvider } from '@/types';
 import { ChromeAI } from '@/utils/chromeai';
 import { StorageManager } from '@/storage';
 import { Toast, Toaster } from '@/utils/toast';
+import { KEYS } from '@/utils/accessibility';
 
 type AppStep = 'setup' | 'documents' | 'actions';
 
@@ -70,6 +71,23 @@ export function App() {
 
     initializeDefaultProvider();
   }, []);
+
+  // Escape key handler for going back to previous step
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === KEYS.ESCAPE) {
+        // Go back to previous step
+        if (currentStep === 'actions') {
+          setCurrentStep('documents');
+        } else if (currentStep === 'documents') {
+          setCurrentStep('setup');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [currentStep]);
 
   const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
     console.log('[App] updateSettings called:', { newSettings, currentSettings: settings });
