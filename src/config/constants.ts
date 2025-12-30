@@ -100,3 +100,12 @@ export const PROVIDER_DESCRIPTIONS = {
   gemini: 'Google\'s advanced AI model with strong reasoning capabilities',
   chromeai: 'Free built-in AI that runs locally in Chrome (Gemini Nano)',
 } as const;
+
+/**
+ * Rate Limiting Configuration
+ */
+export const RATE_LIMIT = {
+  DEFAULT_DAILY_LIMIT: 100,   // Default daily request limit per provider
+  WARNING_THRESHOLD: 0.8,      // Show warning at 80% usage
+  BLOCK_THRESHOLD: 1.0,        // Block requests at 100% usage
+} as const;

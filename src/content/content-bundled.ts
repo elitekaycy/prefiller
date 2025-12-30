@@ -1444,7 +1444,74 @@ class FormAnalyzer {
 
     this.notifications.show(`Found ${this.scrapedFields.length} fields - getting ready...`, 'loading');
 
+    // ============================================================
+    // QUOTA CHECK - Inline implementation for self-contained script
+    // ============================================================
     try {
+      // Check quota before AI request
+      const usageKey = `usage.${settings.aiProvider}`;
+      let usageData = await new Promise<any>((resolve) => {
+        chrome.storage.local.get(usageKey, (result) => resolve(result[usageKey]));
+      });
+
+      // Initialize if not exists
+      if (!usageData) {
+        usageData = {
+          requestCount: 0,
+          dailyLimit: 100,
+          resetDate: new Date().toISOString().split('T')[0],
+          lastRequestAt: 0,
+          warningShown: false
+        };
+      }
+
+      // Check if need daily reset
+      const today = new Date().toISOString().split('T')[0];
+      if (usageData.resetDate !== today) {
+        console.log('[Quota Check] Resetting usage for new day:', today);
+        usageData.requestCount = 0;
+        usageData.resetDate = today;
+        usageData.warningShown = false;
+      }
+
+      // Check if quota exceeded (100%)
+      if (usageData.requestCount >= usageData.dailyLimit) {
+        console.error('[Quota Check] Daily limit exceeded:', usageData.requestCount, '/', usageData.dailyLimit);
+        this.notifications.show(
+          `Daily API limit reached (${usageData.dailyLimit} requests). Resets at midnight.`,
+          'error'
+        );
+        chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'Quota exceeded' });
+        return;
+      }
+
+      // Check warning threshold (80%)
+      const percentage = (usageData.requestCount / usageData.dailyLimit) * 100;
+      if (percentage >= 80 && !usageData.warningShown) {
+        const remaining = usageData.dailyLimit - usageData.requestCount;
+        console.warn('[Quota Check] Warning threshold reached:', Math.round(percentage), '%');
+        this.notifications.show(
+          `API usage warning: ${usageData.requestCount}/${usageData.dailyLimit} requests used (${Math.round(percentage)}%). ${remaining} remaining.`,
+          'error'
+        );
+        usageData.warningShown = true;
+      }
+
+      // Increment usage counter
+      usageData.requestCount += 1;
+      usageData.lastRequestAt = Date.now();
+
+      // Save updated usage data
+      await new Promise<void>((resolve) => {
+        chrome.storage.local.set({ [usageKey]: usageData }, () => {
+          console.log('[Quota Check] Usage incremented:', usageData.requestCount, '/', usageData.dailyLimit);
+          resolve();
+        });
+      });
+
+      // ============================================================
+      // Continue with form filling
+      // ============================================================
       console.log('[fillForms] Documents from settings:', settings.documents);
 
       let personalInfo = 'Personal Information:\n';

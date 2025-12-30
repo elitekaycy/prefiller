@@ -5,6 +5,8 @@ import { ChromeAI } from '@/utils/chromeai';
 import { StorageManager } from '@/storage';
 import { Button, FixedFooter } from './ui';
 import { Toast } from '@/utils/toast';
+import { UsageTracker } from '@/utils/usageTracker';
+import { UsageStats } from '@/storage/StorageSchema';
 
 interface AISetupProps {
   aiProvider: AIProvider;
@@ -24,6 +26,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   const [chromeAIAvailable, setChromeAIAvailable] = useState<boolean | null>(null);
   const [chromeAIStatus, setChromeAIStatus] = useState<string>('');
   const [isEditMode, setIsEditMode] = useState(false); // For existing key editing
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     setInputValue(apiKey);
@@ -33,6 +37,25 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   useEffect(() => {
     checkChromeAIAvailability();
   }, []);
+
+  useEffect(() => {
+    // Load usage stats when provider changes or API key is configured
+    if (apiKey && !isEditMode && aiProvider !== 'chromeai') {
+      loadUsageStats();
+    }
+  }, [aiProvider, apiKey, isEditMode]);
+
+  const loadUsageStats = async () => {
+    setLoadingStats(true);
+    try {
+      const stats = await UsageTracker.getUsageStats(aiProvider);
+      setUsageStats(stats);
+    } catch (error) {
+      console.error('Failed to load usage stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const checkChromeAIAvailability = async () => {
     const status = await ChromeAI.getAvailabilityStatus();
@@ -393,6 +416,88 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             }}
           >
             ✓ API Key Configured
+          </div>
+        )}
+
+        {/* Usage Stats Display */}
+        {apiKey && !isEditMode && aiProvider !== 'chromeai' && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>
+              Daily Usage
+            </label>
+
+            {loadingStats ? (
+              <div className="text-sm" style={{ color: 'var(--gemini-text-secondary)' }}>
+                Loading usage stats...
+              </div>
+            ) : usageStats && (
+              <div
+                className="rounded-lg border p-4"
+                style={{
+                  backgroundColor: usageStats.isBlocked
+                    ? 'rgba(242, 139, 130, 0.05)'
+                    : usageStats.percentage >= 80
+                    ? 'rgba(253, 214, 99, 0.05)'
+                    : 'rgba(138, 180, 248, 0.05)',
+                  borderColor: usageStats.isBlocked
+                    ? 'var(--gemini-error)'
+                    : usageStats.percentage >= 80
+                    ? 'var(--gemini-warning)'
+                    : 'var(--gemini-accent)',
+                }}
+              >
+                {/* Usage Bar */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span style={{ color: 'var(--gemini-text-primary)' }}>
+                      {usageStats.today} / {usageStats.limit} requests
+                    </span>
+                    <span
+                      style={{
+                        color: usageStats.isBlocked
+                          ? 'var(--gemini-error)'
+                          : usageStats.percentage >= 80
+                          ? 'var(--gemini-warning)'
+                          : 'var(--gemini-text-secondary)',
+                      }}
+                    >
+                      {Math.round(usageStats.percentage)}%
+                    </span>
+                  </div>
+                  <div
+                    className="h-2 rounded-full overflow-hidden"
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)' }}
+                  >
+                    <div
+                      className="h-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(usageStats.percentage, 100)}%`,
+                        backgroundColor: usageStats.isBlocked
+                          ? 'var(--gemini-error)'
+                          : usageStats.percentage >= 80
+                          ? 'var(--gemini-warning)'
+                          : 'var(--gemini-success)',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Status Message */}
+                <div className="text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
+                  {usageStats.isBlocked ? (
+                    <span style={{ color: 'var(--gemini-error)' }}>
+                      <strong>Quota Exceeded:</strong> Daily limit reached. Resets at midnight.
+                    </span>
+                  ) : usageStats.percentage >= 80 ? (
+                    <span style={{ color: 'var(--gemini-warning)' }}>
+                      <strong>Warning:</strong> {usageStats.remaining} requests remaining
+                    </span>
+                  ) : (
+                    <span>{usageStats.remaining} requests remaining today. Resets at {usageStats.resetAt}</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

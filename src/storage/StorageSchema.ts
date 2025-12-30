@@ -51,6 +51,30 @@ export interface QuotaInfo {
 }
 
 /**
+ * API Usage Tracking Data (per provider)
+ */
+export interface APIUsageData {
+  requestCount: number;      // Number of requests made today
+  dailyLimit: number;         // Configured daily limit (default: 100)
+  resetDate: string;          // ISO date string for last reset (YYYY-MM-DD)
+  lastRequestAt: number;      // Timestamp of last request
+  warningShown: boolean;      // Whether 80% warning was shown today
+}
+
+/**
+ * Computed Usage Statistics (for UI display)
+ */
+export interface UsageStats {
+  today: number;              // Requests made today
+  limit: number;              // Daily limit
+  percentage: number;         // Usage percentage (0-100)
+  remaining: number;          // Requests remaining
+  resetAt: string;            // When usage resets (midnight local time)
+  isBlocked: boolean;         // Whether requests are blocked (100%+)
+  warningShown: boolean;      // Whether 80% warning was shown today
+}
+
+/**
  * Complete Storage Schema
  * Defines all possible storage keys and their types
  */
@@ -65,6 +89,13 @@ export interface StorageSchema {
   'apiKeys.claude': string;
   'apiKeys.gemini': string;
   'apiKeys.chromeai': string;
+
+  // API Usage Tracking (per provider)
+  'usage.groq': APIUsageData;
+  'usage.claude': APIUsageData;
+  'usage.gemini': APIUsageData;
+  'usage.chromeai': APIUsageData;
+  'usage.defaultLimit': number;  // Default daily limit (100)
 
   // Documents
   'documents.list': UploadedDocument[];
