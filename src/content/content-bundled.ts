@@ -673,6 +673,7 @@ interface IAIProvider {
 abstract class BaseAIProvider implements IAIProvider {
   private readonly MAX_RETRIES = 3;
   private readonly BASE_DELAY_MS = 1000; // 1 second base delay
+  private readonly DEFAULT_TIMEOUT_MS = 30000; // 30 seconds default timeout
 
   /**
    * Retry an operation with exponential backoff
@@ -791,6 +792,38 @@ abstract class BaseAIProvider implements IAIProvider {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /**
+   * Execute a fetch request with timeout
+   * Uses AbortController to cancel the request after timeout
+   */
+  protected async fetchWithTimeout(
+    url: string,
+    options: RequestInit,
+    timeoutMs: number = this.DEFAULT_TIMEOUT_MS
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      // Check if error is due to abort (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeoutMs / 1000}s - the AI provider is taking too long to respond`);
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
+  }
+
   protected parseAIResponse(text: string): string[] {
     console.log('[parseAIResponse] Raw AI response text:', text);
     console.log('[parseAIResponse] Response length:', text.length);
@@ -873,7 +906,7 @@ class ClaudeProvider extends BaseAIProvider {
         model: 'claude-3-5-sonnet-20241022'
       });
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await this.fetchWithTimeout('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -891,7 +924,7 @@ class ClaudeProvider extends BaseAIProvider {
             }
           ]
         })
-      });
+      }, 30000);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -939,7 +972,7 @@ class GroqProvider extends BaseAIProvider {
         model: 'llama-3.3-70b-versatile'
       });
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await this.fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -951,7 +984,7 @@ class GroqProvider extends BaseAIProvider {
           temperature: 0.4,
           max_tokens: 1024
         })
-      });
+      }, 30000);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -999,7 +1032,7 @@ class GeminiProvider extends BaseAIProvider {
         model: 'gemini-2.5-flash'
       });
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const response = await this.fetchWithTimeout(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1011,7 +1044,7 @@ class GeminiProvider extends BaseAIProvider {
             }]
           }]
         })
-      });
+      }, 30000);
 
       if (!response.ok) {
         const errorText = await response.text();
