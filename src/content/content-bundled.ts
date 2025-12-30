@@ -638,15 +638,485 @@ class FormScraper {
   }
 }
 
+// ============================================================
+// AI PROVIDER ABSTRACTION (Strategy Pattern)
+// ============================================================
+
+/**
+ * AI Provider Interface - defines contract for all AI providers
+ */
+interface IAIProvider {
+  /**
+   * Generate a response from the AI provider
+   * @param prompt The prompt to send
+   * @param apiKey The API key for authentication
+   * @returns Parsed array of responses
+   */
+  generateResponse(prompt: string, apiKey: string): Promise<string[]>;
+
+  /**
+   * Validate the format of an API key
+   * @param apiKey The API key to validate
+   * @returns true if format is valid
+   */
+  validateApiKeyFormat(apiKey: string): boolean;
+
+  /**
+   * Get the provider name for display
+   */
+  getProviderName(): string;
+}
+
+/**
+ * Base AI Provider with common functionality
+ */
+abstract class BaseAIProvider implements IAIProvider {
+  protected parseAIResponse(text: string): string[] {
+    console.log('[parseAIResponse] Raw AI response text:', text);
+    console.log('[parseAIResponse] Response length:', text.length);
+
+    const responses: string[] = [];
+
+    // Split by numbered items (1., 2., 3., etc.) and capture everything until the next number
+    const numberedItemRegex = /^(\d+)\.\s*/gm;
+    const matches = [...text.matchAll(numberedItemRegex)];
+
+    if (matches.length > 0) {
+      console.log('[parseAIResponse] Found numbered format with', matches.length, 'items');
+
+      matches.forEach((match, i) => {
+        const index = parseInt(match[1]) - 1;
+        const startPos = match.index! + match[0].length;
+        const endPos = i < matches.length - 1 ? matches[i + 1].index! : text.length;
+
+        let value = text.substring(startPos, endPos).trim();
+
+        // Clean up the response
+        // Remove markdown formatting: **text** -> text
+        value = value.replace(/\*\*(.+?)\*\*/g, '$1');
+
+        // Remove "Field Name": prefix pattern
+        value = value.replace(/^[^:]+:\s*/,  '');
+
+        // Remove explanation after [SKIP] or value (only if on same line)
+        // Don't remove hyphenated content in multi-line responses
+        const firstLine = value.split('\n')[0];
+        if (firstLine.includes('[SKIP]')) {
+          value = value.replace(/\s*-\s*.+$/, '');
+        }
+
+        // Skip if explicitly [SKIP]
+        if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
+          value = '';
+        }
+
+        responses[index] = value;
+        console.log(`[parseAIResponse] Parsed item ${index + 1}:`, value.substring(0, 150) + (value.length > 150 ? '...' : ''));
+      });
+    } else {
+      // No numbered format found, treat entire text as single response
+      console.log('[parseAIResponse] No numbered format detected, using entire text as response');
+      let value = text.trim();
+
+      // Clean up the response
+      value = value.replace(/\*\*(.+?)\*\*/g, '$1');
+      value = value.replace(/^[^:]+:\s*/,  '');
+
+      // Skip if explicitly [SKIP]
+      if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
+        value = '';
+      }
+
+      responses[0] = value;
+      console.log('[parseAIResponse] Single response:', value.substring(0, 100) + '...');
+    }
+
+    console.log('[parseAIResponse] Total responses parsed:', responses.length);
+
+    return responses;
+  }
+
+  abstract generateResponse(prompt: string, apiKey: string): Promise<string[]>;
+  abstract validateApiKeyFormat(apiKey: string): boolean;
+  abstract getProviderName(): string;
+}
+
+/**
+ * Anthropic Claude Provider
+ */
+class ClaudeProvider extends BaseAIProvider {
+  async generateResponse(prompt: string, apiKey: string): Promise<string[]> {
+    console.log('[Claude API Request]:', {
+      keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+      keyLength: apiKey.length,
+      model: 'claude-3-5-sonnet-20241022'
+    });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Claude API Error]:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody: errorText
+      });
+      throw new Error(`Claude API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('[Claude API Success]:', { hasContent: !!data.content, contentLength: data.content?.length || 0 });
+
+    if (!data.content || data.content.length === 0) {
+      throw new Error('No response from Claude API');
+    }
+
+    const responseText = data.content[0].text;
+    console.log('[Claude API Response Text]:', responseText);
+    console.log('[Claude API Response Length]:', responseText.length);
+
+    return this.parseAIResponse(responseText);
+  }
+
+  validateApiKeyFormat(apiKey: string): boolean {
+    return apiKey.startsWith('sk-ant-');
+  }
+
+  getProviderName(): string {
+    return 'Anthropic Claude';
+  }
+}
+
+/**
+ * Groq Provider
+ */
+class GroqProvider extends BaseAIProvider {
+  async generateResponse(prompt: string, apiKey: string): Promise<string[]> {
+    console.log('[Groq API Request]:', {
+      keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+      keyLength: apiKey.length,
+      model: 'llama-3.3-70b-versatile'
+    });
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.4,
+        max_tokens: 1024
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Groq API Error]:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody: errorText
+      });
+      throw new Error(`Groq API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('[Groq API Success]:', { hasChoices: !!data.choices, choicesLength: data.choices?.length || 0 });
+
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error('No response from Groq API');
+    }
+
+    const responseText = data.choices[0].message.content;
+    console.log('[Groq API Response Text]:', responseText);
+    console.log('[Groq API Response Length]:', responseText.length);
+
+    return this.parseAIResponse(responseText);
+  }
+
+  validateApiKeyFormat(apiKey: string): boolean {
+    return apiKey.startsWith('gsk_');
+  }
+
+  getProviderName(): string {
+    return 'Groq';
+  }
+}
+
+/**
+ * Google Gemini Provider
+ */
+class GeminiProvider extends BaseAIProvider {
+  async generateResponse(prompt: string, apiKey: string): Promise<string[]> {
+    console.log('[Gemini API Request]:', {
+      keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+      keyLength: apiKey.length,
+      model: 'gemini-2.5-flash'
+    });
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gemini API Error]:', {
+        status: response.status,
+        statusText: response.statusText,
+        errorBody: errorText
+      });
+      throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('[Gemini API Success]:', { hasCandidates: !!data.candidates, candidatesLength: data.candidates?.length || 0 });
+
+    if (!data.candidates || !data.candidates[0]) {
+      throw new Error('Invalid response from Gemini API');
+    }
+
+    const responseText = data.candidates[0].content.parts[0].text;
+    console.log('[Gemini API Response Text]:', responseText);
+    console.log('[Gemini API Response Length]:', responseText.length);
+
+    return this.parseAIResponse(responseText);
+  }
+
+  validateApiKeyFormat(apiKey: string): boolean {
+    return apiKey.startsWith('AIzaSy');
+  }
+
+  getProviderName(): string {
+    return 'Google Gemini';
+  }
+}
+
+/**
+ * AI Provider Factory - creates appropriate provider instance
+ */
+class AIProviderFactory {
+  static create(providerName: string): IAIProvider {
+    switch (providerName.toLowerCase()) {
+      case 'claude':
+        return new ClaudeProvider();
+      case 'groq':
+        return new GroqProvider();
+      case 'gemini':
+        return new GeminiProvider();
+      default:
+        throw new Error(`Unknown AI provider: ${providerName}`);
+    }
+  }
+
+  static getSupportedProviders(): string[] {
+    return ['claude', 'groq', 'gemini'];
+  }
+}
+
+// ============================================================
+// STORAGE SERVICE
+// ============================================================
+
+/**
+ * Storage Service - handles all chrome.storage operations
+ */
+class StorageService {
+  async getSettings(): Promise<{
+    aiProvider: string;
+    apiKey: string;
+    documents: any[];
+    isEnabled: boolean;
+  }> {
+    try {
+      // Use new storage format: separate keys instead of single 'settings' object
+      const data = await new Promise<any>((resolve) => {
+        chrome.storage.local.get(null, resolve); // Get all storage
+      });
+
+      console.log('[Storage Service] Raw storage data:', Object.keys(data));
+
+      const aiProvider = data['settings.aiProvider'] || 'claude';
+      const isEnabled = data['settings.isEnabled'] ?? true;
+      const documents = data['documents.list'] || [];
+
+      // Get encrypted API key for current provider
+      const encryptedKey = data[`apiKeys.${aiProvider}`];
+      console.log('[Storage Service] Getting API key:', { provider: aiProvider, hasEncryptedKey: !!encryptedKey });
+
+      let apiKey = '';
+      if (encryptedKey) {
+        try {
+          apiKey = await SecureEncryption.decrypt(encryptedKey);
+          console.log('[Storage Service] API key decrypted:', { provider: aiProvider, keyLength: apiKey?.length || 0 });
+        } catch (error) {
+          console.error('[Storage Service] Decryption failed:', error);
+        }
+      }
+
+      const settings = {
+        aiProvider,
+        apiKey: apiKey || '',
+        documents,
+        isEnabled,
+      };
+
+      console.log('[Storage Service] getSettings():', {
+        aiProvider: settings.aiProvider,
+        hasApiKey: !!settings.apiKey,
+        apiKeyLength: settings.apiKey?.length || 0,
+        documentsCount: settings.documents.length,
+        isEnabled: settings.isEnabled
+      });
+
+      return settings;
+    } catch (error) {
+      console.error('[Storage Service] getSettings() error:', error);
+      return {
+        aiProvider: 'claude',
+        apiKey: '',
+        documents: [],
+        isEnabled: true,
+      };
+    }
+  }
+}
+
+// ============================================================
+// NOTIFICATION SERVICE
+// ============================================================
+
+/**
+ * Notification Service - handles all user notifications
+ */
+class NotificationService {
+  show(message: string, type: 'loading' | 'success' | 'error' = 'loading'): void {
+    const existing = document.getElementById('prefiller-notification');
+    if (existing) {
+      existing.remove();
+    }
+
+    const colors = {
+      loading: { bg: '#1f2937', border: '#3b82f6', text: '#fff' },
+      success: { bg: '#065f46', border: '#10b981', text: '#fff' },
+      error: { bg: '#7f1d1d', border: '#ef4444', text: '#fff' }
+    };
+
+    const config = colors[type];
+    const showSpinner = type === 'loading';
+
+    const notification = document.createElement('div');
+    notification.id = 'prefiller-notification';
+    notification.innerHTML = `
+      <div style="
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${config.bg};
+        color: ${config.text};
+        padding: 16px 20px;
+        border-radius: 12px;
+        border: 2px solid ${config.border};
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        z-index: 999999;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 14px;
+        max-width: 350px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease-out;
+      ">
+        ${showSpinner ? `
+          <div style="
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          "></div>
+        ` : ''}
+        <div style="flex: 1; line-height: 1.4;">${message}</div>
+      </div>
+      <style>
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      </style>
+    `;
+
+    document.body.appendChild(notification);
+
+    if (type !== 'loading') {
+      setTimeout(() => {
+        const el = document.getElementById('prefiller-notification');
+        if (el) {
+          el.style.animation = 'slideOut 0.3s ease-in';
+          setTimeout(() => el.remove(), 300);
+        }
+      }, 5000);
+    }
+  }
+}
+
+// ============================================================
+// FORM ANALYZER (Refactored to orchestrate only)
+// ============================================================
+
 // Main form analyzer class
 class FormAnalyzer {
   private detectedForms: FormField[] = [];
   private scrapedFields: FieldMetadata[] = [];
   private scraper: FormScraper;
   private isTopFrame: boolean;
+  private storage: StorageService;
+  private notifications: NotificationService;
+  private aiProvider: IAIProvider | null = null;
 
   constructor() {
     this.scraper = new FormScraper();
+    this.storage = new StorageService();
+    this.notifications = new NotificationService();
     this.isTopFrame = window.self === window.top;
 
 
@@ -781,9 +1251,9 @@ class FormAnalyzer {
   }
 
   private async fillForms() {
-    const settings = await this.getSettings();
+    const settings = await this.storage.getSettings();
 
-    console.log('[Content Script] fillForms called:', {
+    console.log('[Form Analyzer] fillForms called:', {
       provider: settings.aiProvider,
       hasApiKey: !!settings.apiKey,
       keyLength: settings.apiKey?.length || 0,
@@ -792,28 +1262,28 @@ class FormAnalyzer {
     });
 
     if (!settings.aiProvider) {
-      this.showNotification('Please set up your AI provider first', 'error');
+      this.notifications.show('Please set up your AI provider first', 'error');
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No AI provider configured' });
       return;
     }
 
-    // Chrome AI doesn't need an API key
+    // Chrome AI doesn't need an API key (skip for now, not implemented)
     if (settings.aiProvider !== 'chromeai' && !settings.apiKey) {
-      this.showNotification('API key required - please add it in settings', 'error');
+      this.notifications.show('API key required - please add it in settings', 'error');
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No API key configured' });
       return;
     }
 
-    // API key is already decrypted from getSettings()
+    // API key is already decrypted from storage service
     const decodedApiKey = settings.apiKey || '';
 
     if (this.scrapedFields.length === 0) {
-      this.showNotification('Hmm, we couldn\'t find any forms on this page', 'error');
+      this.notifications.show('Hmm, we couldn\'t find any forms on this page', 'error');
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No forms detected' });
       return;
     }
 
-    this.showNotification(`Found ${this.scrapedFields.length} fields - getting ready...`, 'loading');
+    this.notifications.show(`Found ${this.scrapedFields.length} fields - getting ready...`, 'loading');
 
     try {
       console.log('[fillForms] Documents from settings:', settings.documents);
@@ -844,17 +1314,21 @@ class FormAnalyzer {
       console.log('[fillForms] Complete prompt being sent to AI:', prompt);
       console.log('[fillForms] Prompt length:', prompt.length);
 
-      const providerName = settings.aiProvider === 'claude' ? 'Anthropic Claude' : settings.aiProvider === 'groq' ? 'Groq' : 'Google Gemini';
-      this.showNotification(`Reading your documents and filling the form...`, 'loading');
+      // Create AI provider instance using factory
+      this.aiProvider = AIProviderFactory.create(settings.aiProvider);
+      const providerName = this.aiProvider.getProviderName();
 
-      const responses = await this.getAIResponses(settings.aiProvider, decodedApiKey, prompt);
+      this.notifications.show(`Reading your documents and filling the form...`, 'loading');
+
+      // Use the provider to generate responses
+      const responses = await this.aiProvider.generateResponse(prompt, decodedApiKey);
 
       console.log('[fillForms] AI responses received:', responses.length);
       responses.forEach((resp, i) => {
         console.log(`[Response ${i + 1}]:`, resp);
       });
 
-      this.showNotification('Almost done, filling in your information...', 'loading');
+      this.notifications.show('Almost done, filling in your information...', 'loading');
 
       const filledCount = this.scraper.fillFields(this.scrapedFields, responses);
 
@@ -864,338 +1338,19 @@ class FormAnalyzer {
         }
       });
 
-      this.showNotification(`✅ Successfully filled ${filledCount} out of ${this.scrapedFields.length} fields!`, 'success');
+      this.notifications.show(`✅ Successfully filled ${filledCount} out of ${this.scrapedFields.length} fields!`, 'success');
 
       // Notify extension that processing is complete
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: true });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      this.showNotification(`❌ Error: ${errorMessage}`, 'error');
+      this.notifications.show(`❌ Error: ${errorMessage}`, 'error');
 
       // Notify extension that processing is complete (with error)
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: errorMessage });
     }
   }
 
-  private async getSettings(): Promise<any> {
-    try {
-      // Use new storage format: separate keys instead of single 'settings' object
-      const data = await new Promise<any>((resolve) => {
-        chrome.storage.local.get(null, resolve); // Get all storage
-      });
-
-      console.log('[Content Script] Raw storage data:', Object.keys(data));
-
-      const aiProvider = data['settings.aiProvider'] || 'claude';
-      const isEnabled = data['settings.isEnabled'] ?? true;
-      const documents = data['documents.list'] || [];
-
-      // Get encrypted API key for current provider
-      const encryptedKey = data[`apiKeys.${aiProvider}`];
-      console.log('[Content Script] Getting API key:', { provider: aiProvider, hasEncryptedKey: !!encryptedKey });
-
-      let apiKey = '';
-      if (encryptedKey) {
-        try {
-          apiKey = await SecureEncryption.decrypt(encryptedKey);
-          console.log('[Content Script] API key decrypted:', { provider: aiProvider, keyLength: apiKey?.length || 0 });
-        } catch (error) {
-          console.error('[Content Script] Decryption failed:', error);
-        }
-      }
-
-      const settings = {
-        aiProvider,
-        apiKey: apiKey || '',
-        documents,
-        isEnabled,
-      };
-
-      console.log('[Content Script] getSettings():', {
-        aiProvider: settings.aiProvider,
-        hasApiKey: !!settings.apiKey,
-        apiKeyLength: settings.apiKey?.length || 0,
-        documentsCount: settings.documents.length,
-        isEnabled: settings.isEnabled
-      });
-
-      return settings;
-    } catch (error) {
-      console.error('[Content Script] getSettings() error:', error);
-      return {
-        aiProvider: 'claude',
-        apiKey: '',
-        documents: [],
-        isEnabled: true,
-      };
-    }
-  }
-
-  private async getAIResponses(provider: string, apiKey: string, prompt: string): Promise<string[]> {
-    let response;
-
-    if (provider === 'claude') {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 1024,
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude API request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (!data.content || data.content.length === 0) {
-        throw new Error('No response from Claude API');
-      }
-
-      return this.parseAIResponse(data.content[0].text);
-    } else if (provider === 'groq') {
-      // Groq API
-      console.log('[Groq API Request]:', {
-        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
-        keyLength: apiKey.length,
-        model: 'llama-3.3-70b-versatile'
-      });
-
-      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.4,
-          max_tokens: 1024
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[Groq API Error]:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorBody: errorText
-        });
-        throw new Error(`Groq API request failed: ${response.status} ${response.statusText}\n${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('[Groq API Success]:', { hasChoices: !!data.choices, choicesLength: data.choices?.length || 0 });
-
-      if (!data.choices || data.choices.length === 0) {
-        throw new Error('No response from Groq API');
-      }
-
-      return this.parseAIResponse(data.choices[0].message.content);
-    } else {
-      // Gemini
-      console.log('[Gemini API Request]:', {
-        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
-        keyLength: apiKey.length,
-        model: 'gemini-2.5-flash'
-      });
-
-      response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[Gemini API Error]:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorBody: errorText
-        });
-        throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}\n${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('[Gemini API Success]:', { hasCandidates: !!data.candidates, candidatesLength: data.candidates?.length || 0 });
-
-      if (!data.candidates || !data.candidates[0]) {
-        throw new Error('Invalid response from Gemini API');
-      }
-
-      const responseText = data.candidates[0].content.parts[0].text;
-      console.log('[Gemini API Response Text]:', responseText);
-      console.log('[Gemini API Response Length]:', responseText.length);
-
-      return this.parseAIResponse(responseText);
-    }
-  }
-
-  private parseAIResponse(text: string): string[] {
-    console.log('[parseAIResponse] Raw AI response text:', text);
-    console.log('[parseAIResponse] Response length:', text.length);
-
-    const responses: string[] = [];
-
-    // Split by numbered items (1., 2., 3., etc.) and capture everything until the next number
-    const numberedItemRegex = /^(\d+)\.\s*/gm;
-    const matches = [...text.matchAll(numberedItemRegex)];
-
-    if (matches.length > 0) {
-      console.log('[parseAIResponse] Found numbered format with', matches.length, 'items');
-
-      matches.forEach((match, i) => {
-        const index = parseInt(match[1]) - 1;
-        const startPos = match.index! + match[0].length;
-        const endPos = i < matches.length - 1 ? matches[i + 1].index! : text.length;
-
-        let value = text.substring(startPos, endPos).trim();
-
-        // Clean up the response
-        // Remove markdown formatting: **text** -> text
-        value = value.replace(/\*\*(.+?)\*\*/g, '$1');
-
-        // Remove "Field Name": prefix pattern
-        value = value.replace(/^[^:]+:\s*/,  '');
-
-        // Remove explanation after [SKIP] or value (only if on same line)
-        // Don't remove hyphenated content in multi-line responses
-        const firstLine = value.split('\n')[0];
-        if (firstLine.includes('[SKIP]')) {
-          value = value.replace(/\s*-\s*.+$/, '');
-        }
-
-        // Skip if explicitly [SKIP]
-        if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
-          value = '';
-        }
-
-        responses[index] = value;
-        console.log(`[parseAIResponse] Parsed item ${index + 1}:`, value.substring(0, 150) + (value.length > 150 ? '...' : ''));
-      });
-    } else {
-      // No numbered format found, treat entire text as single response
-      console.log('[parseAIResponse] No numbered format detected, using entire text as response');
-      let value = text.trim();
-
-      // Clean up the response
-      value = value.replace(/\*\*(.+?)\*\*/g, '$1');
-      value = value.replace(/^[^:]+:\s*/,  '');
-
-      // Skip if explicitly [SKIP]
-      if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
-        value = '';
-      }
-
-      responses[0] = value;
-      console.log('[parseAIResponse] Single response:', value.substring(0, 100) + '...');
-    }
-
-    console.log('[parseAIResponse] Total responses parsed:', responses.length);
-
-    return responses;
-  }
-
-  private showNotification(message: string, type: 'loading' | 'success' | 'error' = 'loading') {
-    const existing = document.getElementById('prefiller-notification');
-    if (existing) {
-      existing.remove();
-    }
-
-    const colors = {
-      loading: { bg: '#1f2937', border: '#3b82f6', text: '#fff' },
-      success: { bg: '#065f46', border: '#10b981', text: '#fff' },
-      error: { bg: '#7f1d1d', border: '#ef4444', text: '#fff' }
-    };
-
-    const config = colors[type];
-    const showSpinner = type === 'loading';
-
-    const notification = document.createElement('div');
-    notification.id = 'prefiller-notification';
-    notification.innerHTML = `
-      <div style="
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${config.bg};
-        color: ${config.text};
-        padding: 16px 20px;
-        border-radius: 12px;
-        border: 2px solid ${config.border};
-        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        z-index: 999999;
-        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: 14px;
-        max-width: 350px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        animation: slideIn 0.3s ease-out;
-      ">
-        ${showSpinner ? `
-          <div style="
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-          "></div>
-        ` : ''}
-        <div style="flex: 1; line-height: 1.4;">${message}</div>
-      </div>
-      <style>
-        @keyframes slideIn {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      </style>
-    `;
-
-    document.body.appendChild(notification);
-
-    if (type !== 'loading') {
-      setTimeout(() => {
-        const el = document.getElementById('prefiller-notification');
-        if (el) {
-          el.style.animation = 'slideOut 0.3s ease-in';
-          setTimeout(() => el.remove(), 300);
-        }
-      }, 5000);
-    }
-  }
 }
 
 // Initialize the form analyzer
