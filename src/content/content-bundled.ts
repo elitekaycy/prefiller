@@ -720,12 +720,14 @@ Is Enabled: ${settings.isEnabled}`);
 
     if (!settings.aiProvider) {
       this.showNotification('Please configure your AI provider first!', 'error');
+      chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No AI provider configured' });
       return;
     }
 
     // Chrome AI doesn't need an API key
     if (settings.aiProvider !== 'chromeai' && !settings.apiKey) {
       this.showNotification('Please configure your API key first!', 'error');
+      chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No API key configured' });
       return;
     }
 
@@ -734,6 +736,7 @@ Is Enabled: ${settings.isEnabled}`);
 
     if (this.scrapedFields.length === 0) {
       this.showNotification('No forms detected on this page.', 'error');
+      chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No forms detected' });
       return;
     }
 
@@ -765,9 +768,15 @@ Is Enabled: ${settings.isEnabled}`);
       });
 
       this.showNotification(`✅ Successfully filled ${filledCount} out of ${this.scrapedFields.length} fields!`, 'success');
+
+      // Notify extension that processing is complete
+      chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: true });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       this.showNotification(`❌ Error: ${errorMessage}`, 'error');
+
+      // Notify extension that processing is complete (with error)
+      chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: errorMessage });
     }
   }
 

@@ -24,6 +24,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
 
       if (!tab.id) {
         alert('No active tab found. Please refresh the page and try again.');
+        setIsProcessing(false);
         return;
       }
 
@@ -63,6 +64,21 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       await ensureContentScript(tab.id);
       setContentScriptStatus('loaded');
 
+      // Listen for completion message from content script
+      const messageListener = (message: any) => {
+        if (message.type === 'PREFILLER_PROCESSING_COMPLETE') {
+          setIsProcessing(false);
+          BrowserAPI.runtime.onMessage.removeListener(messageListener);
+        }
+      };
+      BrowserAPI.runtime.onMessage.addListener(messageListener);
+
+      // Auto-stop loading after 60 seconds (timeout)
+      setTimeout(() => {
+        setIsProcessing(false);
+        BrowserAPI.runtime.onMessage.removeListener(messageListener);
+      }, 60000);
+
       // Use executeScript to run in all frames (main + iframes)
       await BrowserAPI.scripting.executeScript({
         target: { tabId: tab.id, allFrames: true },
@@ -74,7 +90,6 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       setContentScriptStatus('failed');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Toast.error(errorMessage);
-    } finally {
       setIsProcessing(false);
     }
   };
