@@ -862,6 +862,12 @@ Is Enabled: ${settings.isEnabled}`);
       return this.parseAIResponse(data.content[0].text);
     } else if (provider === 'groq') {
       // Groq API
+      console.log('[Groq API Request]:', {
+        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+        keyLength: apiKey.length,
+        model: 'llama-3.3-70b-versatile'
+      });
+
       response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -878,10 +884,17 @@ Is Enabled: ${settings.isEnabled}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Groq API request failed: ${response.status} ${response.statusText}`);
+        console.error('[Groq API Error]:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`Groq API request failed: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       const data = await response.json();
+      console.log('[Groq API Success]:', { hasChoices: !!data.choices, choicesLength: data.choices?.length || 0 });
+
       if (!data.choices || data.choices.length === 0) {
         throw new Error('No response from Groq API');
       }
