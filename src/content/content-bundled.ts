@@ -427,11 +427,11 @@ class FormScraper {
     console.log('[Prompt Builder] Optimized info length:', optimizedInfo.length);
     console.log('[Prompt Builder] Optimized info preview:', optimizedInfo.substring(0, 500));
 
-    let prompt = `You are a form-filling assistant. Fill out the form fields based on the personal information provided.\n\n`;
+    let prompt = `You are an intelligent form-filling assistant. Your job is to carefully read and understand the personal information document provided, then intelligently fill out form fields based on that information.\n\n`;
 
-    prompt += `=== PERSONAL INFORMATION ===\n${optimizedInfo}\n\n`;
+    prompt += `=== PERSONAL INFORMATION DOCUMENT ===\n${optimizedInfo}\n\n`;
 
-    prompt += `=== FORM FIELDS TO FILL ===\n`;
+    prompt += `=== FORM FIELDS TO FILL (${fields.length} fields) ===\n`;
 
     // Use more concise format while keeping all important details
     fields.forEach((field, index) => {
@@ -452,19 +452,44 @@ class FormScraper {
     });
 
     prompt += `\n=== INSTRUCTIONS ===\n`;
-    prompt += `IMPORTANT: Read the PERSONAL INFORMATION section above and extract actual data values to fill the form fields.\n`;
-    prompt += `DO NOT just echo the field name - provide the ACTUAL VALUE from the personal information.\n\n`;
-    prompt += `Provide responses for each field in this exact format:\n`;
-    prompt += `1. [Actual value from personal info]\n`;
-    prompt += `2. [Actual value from personal info]\n`;
+    prompt += `You must READ and UNDERSTAND the personal information document above, then intelligently fill each field.\n\n`;
+
+    prompt += `HOW TO FILL FIELDS:\n\n`;
+
+    prompt += `A) EXTRACTION FIELDS (simple data like name, email, phone, address, dates):\n`;
+    prompt += `   - Extract directly if stated: "Name: Dickson" → "Dickson"\n`;
+    prompt += `   - Infer from context: "5 years at Google" → Years of Experience = "5"\n`;
+    prompt += `   - DO NOT echo the field label (write "Dickson", NOT "First Name")\n\n`;
+
+    prompt += `B) GENERATIVE FIELDS (open-ended questions, textareas, cover letters, motivations):\n`;
+    prompt += `   - Read the ENTIRE document to understand the person's background, skills, and goals\n`;
+    prompt += `   - COMPOSE an intelligent, personalized response that:\n`;
+    prompt += `     * Answers the specific question being asked\n`;
+    prompt += `     * References relevant information from their document\n`;
+    prompt += `     * Is professional, concise, and well-written\n`;
+    prompt += `     * Sounds natural and human-written\n`;
+    prompt += `   - Examples:\n`;
+    prompt += `     * Field: "Why are you interested in this role?" → Compose 2-3 sentences based on their experience/goals in the document\n`;
+    prompt += `     * Field: "Tell us about yourself" → Write a brief introduction using info from the document\n`;
+    prompt += `     * Field: "Cover letter" → Generate a professional cover letter based on their background\n\n`;
+
+    prompt += `RESPONSE FORMAT:\n`;
+    prompt += `Provide exactly ${fields.length} responses (one per field) in this format:\n`;
+    prompt += `1. [value for field 1]\n`;
+    prompt += `2. [value for field 2]\n`;
+    prompt += `3. [value for field 3]\n`;
     prompt += `etc.\n\n`;
-    prompt += `Rules:\n`;
-    prompt += `- Extract and use ACTUAL DATA from the personal information section above (e.g., if name is "Dickson", write "Dickson", not "First Name")\n`;
-    prompt += `- For select fields, choose the most appropriate option from the provided list\n`;
-    prompt += `- For dates/numbers, use the Format or Pattern specified. If no format specified, default to: dates as MM/DD/YYYY, phones as (123) 456-7890\n`;
+
+    prompt += `IMPORTANT RULES:\n`;
+    prompt += `- For simple fields: EXTRACT data from the document\n`;
+    prompt += `- For open-ended questions: GENERATE intelligent, personalized responses\n`;
+    prompt += `- DO NOT copy/paste the field label or placeholder as the answer\n`;
+    prompt += `- For select fields, choose the best matching option\n`;
+    prompt += `- For dates: use format specified or default to MM/DD/YYYY\n`;
+    prompt += `- For phones: use format specified or default to (XXX) XXX-XXXX\n`;
     prompt += `- Respect maxLength and pattern constraints\n`;
-    prompt += `- If you cannot find relevant information in the personal data, respond with "[SKIP]"\n`;
-    prompt += `- Keep responses concise and appropriate for the field type\n`;
+    prompt += `- Only use "[SKIP]" if the document contains absolutely no relevant information\n`;
+    prompt += `- Be intelligent, contextual, and professional\n`;
 
     return prompt;
   }
