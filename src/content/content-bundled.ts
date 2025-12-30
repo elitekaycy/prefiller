@@ -476,16 +476,24 @@ class FormScraper {
     prompt += `   - DO NOT echo the field label (write "Dickson", NOT "First Name")\n\n`;
 
     prompt += `B) GENERATIVE FIELDS (open-ended questions, textareas, cover letters, motivations):\n`;
-    prompt += `   - Read the ENTIRE document to understand the person's background, skills, and goals\n`;
-    prompt += `   - COMPOSE an intelligent, personalized response that:\n`;
-    prompt += `     * Answers the specific question being asked\n`;
-    prompt += `     * References relevant information from their document\n`;
-    prompt += `     * Is professional, concise, and well-written\n`;
-    prompt += `     * Sounds natural and human-written\n`;
+    prompt += `   - Read the ENTIRE document CAREFULLY to understand the person's background, skills, experience, and goals\n`;
+    prompt += `   - ANALYZE the field label, placeholder, description, and surrounding context to understand:\n`;
+    prompt += `     * What company/role is this for? (look for company names, role titles in the context)\n`;
+    prompt += `     * What are they specifically asking for?\n`;
+    prompt += `     * What qualities, skills, or experiences would be most relevant?\n`;
+    prompt += `   - COMPOSE a DETAILED, intelligent, and highly personalized response that:\n`;
+    prompt += `     * Directly addresses the specific question being asked\n`;
+    prompt += `     * Demonstrates deep understanding of BOTH the document AND the question context\n`;
+    prompt += `     * References SPECIFIC, RELEVANT achievements, projects, or skills from the document\n`;
+    prompt += `     * Shows why they're a strong fit by connecting their experience to what's being asked\n`;
+    prompt += `     * Is professional, well-structured, and compelling\n`;
+    prompt += `     * Is COMPREHENSIVE but CONCISE - include all relevant details without being verbose\n`;
+    prompt += `     * Sounds natural, human-written, and authentic\n`;
+    prompt += `   - BE DETAILED: Don't be generic. Pull specific technologies, metrics, achievements, and project names from the document\n`;
     prompt += `   - Examples:\n`;
-    prompt += `     * Field: "Why are you interested in this role?" → Compose 2-3 sentences based on their experience/goals in the document\n`;
-    prompt += `     * Field: "Tell us about yourself" → Write a brief introduction using info from the document\n`;
-    prompt += `     * Field: "Cover letter" → Generate a professional cover letter based on their background\n\n`;
+    prompt += `     * Field: "Why are you interested in this role at [Company]?" → Write 3-4 sentences connecting their specific experience/skills to the company/role, mentioning relevant projects and technologies\n`;
+    prompt += `     * Field: "Tell us about yourself" → Write a comprehensive introduction covering their background, key achievements with metrics, technical skills, and career goals\n`;
+    prompt += `     * Field: "Cover letter" → Generate a detailed, professional cover letter that showcases their most relevant experiences and explains why they're an excellent fit\n\n`;
 
     prompt += `RESPONSE FORMAT:\n`;
     prompt += `Provide exactly ${fields.length} responses (one per field) in this format:\n`;
@@ -496,9 +504,13 @@ class FormScraper {
 
     prompt += `IMPORTANT RULES:\n`;
     prompt += `- For simple fields: EXTRACT data from the document\n`;
-    prompt += `- For open-ended questions: GENERATE intelligent, personalized responses\n`;
+    prompt += `- For open-ended questions: GENERATE detailed, intelligent, personalized responses with SPECIFIC examples from the document\n`;
+    prompt += `- BE THOROUGH AND DETAILED: Include specific technologies, project names, metrics, and achievements from the document\n`;
+    prompt += `- ANALYZE CONTEXT: Look at the field's label, placeholder, description, and surrounding text to understand what company/role this is for\n`;
+    prompt += `- CONNECT THE DOTS: Explain WHY their experience is relevant by connecting it to what the field is asking for\n`;
     prompt += `- DO NOT copy/paste the field label or placeholder as the answer\n`;
     prompt += `- DO NOT skip optional or personal fields - fill them intelligently using document info\n`;
+    prompt += `- DO NOT be generic - pull SPECIFIC details from the document (company names, technologies, metrics, dates)\n`;
     prompt += `- For missing data: Make EDUCATED GUESSES based on context from the document\n`;
     prompt += `  * Example: If document shows software experience, infer years based on project dates/timeline\n`;
     prompt += `  * Example: If location mentioned, infer work authorization for that country\n`;
@@ -508,7 +520,7 @@ class FormScraper {
     prompt += `- For phones: use format specified or default to (XXX) XXX-XXXX\n`;
     prompt += `- Respect maxLength and pattern constraints\n`;
     prompt += `- ONLY use "[SKIP]" for file upload fields or truly impossible fields\n`;
-    prompt += `- Be intelligent, contextual, professional, and THOROUGH\n`;
+    prompt += `- Be intelligent, contextual, professional, THOROUGH, and DETAILED\n`;
     prompt += `- RESPONSE FORMAT: Provide ONLY the value, no explanations or markdown\n`;
     prompt += `  * WRONG: "**First Name**: Dickson"\n`;
     prompt += `  * CORRECT: "Dickson"\n`;
@@ -780,14 +792,14 @@ class FormAnalyzer {
     });
 
     if (!settings.aiProvider) {
-      this.showNotification('Please configure your AI provider first!', 'error');
+      this.showNotification('Please set up your AI provider first', 'error');
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No AI provider configured' });
       return;
     }
 
     // Chrome AI doesn't need an API key
     if (settings.aiProvider !== 'chromeai' && !settings.apiKey) {
-      this.showNotification('Please configure your API key first!', 'error');
+      this.showNotification('API key required - please add it in settings', 'error');
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No API key configured' });
       return;
     }
@@ -796,12 +808,12 @@ class FormAnalyzer {
     const decodedApiKey = settings.apiKey || '';
 
     if (this.scrapedFields.length === 0) {
-      this.showNotification('No forms detected on this page.', 'error');
+      this.showNotification('Hmm, we couldn\'t find any forms on this page', 'error');
       chrome.runtime.sendMessage({ type: 'PREFILLER_PROCESSING_COMPLETE', success: false, error: 'No forms detected' });
       return;
     }
 
-    this.showNotification(`🔍 Analyzing ${this.scrapedFields.length} form fields...`, 'loading');
+    this.showNotification(`Found ${this.scrapedFields.length} fields - getting ready...`, 'loading');
 
     try {
       console.log('[fillForms] Documents from settings:', settings.documents);
@@ -833,7 +845,7 @@ class FormAnalyzer {
       console.log('[fillForms] Prompt length:', prompt.length);
 
       const providerName = settings.aiProvider === 'claude' ? 'Anthropic Claude' : settings.aiProvider === 'groq' ? 'Groq' : 'Google Gemini';
-      this.showNotification(`🤖 Generating responses with ${providerName}...`, 'loading');
+      this.showNotification(`Reading your documents and filling the form...`, 'loading');
 
       const responses = await this.getAIResponses(settings.aiProvider, decodedApiKey, prompt);
 
@@ -842,7 +854,7 @@ class FormAnalyzer {
         console.log(`[Response ${i + 1}]:`, resp);
       });
 
-      this.showNotification('✨ Filling form fields...', 'loading');
+      this.showNotification('Almost done, filling in your information...', 'loading');
 
       const filledCount = this.scraper.fillFields(this.scrapedFields, responses);
 
@@ -996,7 +1008,13 @@ class FormAnalyzer {
       return this.parseAIResponse(data.choices[0].message.content);
     } else {
       // Gemini
-      response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+      console.log('[Gemini API Request]:', {
+        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+        keyLength: apiKey.length,
+        model: 'gemini-2.5-flash'
+      });
+
+      response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1011,15 +1029,27 @@ class FormAnalyzer {
       });
 
       if (!response.ok) {
-        throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('[Gemini API Error]:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}\n${errorText}`);
       }
 
       const data = await response.json();
+      console.log('[Gemini API Success]:', { hasCandidates: !!data.candidates, candidatesLength: data.candidates?.length || 0 });
+
       if (!data.candidates || !data.candidates[0]) {
         throw new Error('Invalid response from Gemini API');
       }
 
-      return this.parseAIResponse(data.candidates[0].content.parts[0].text);
+      const responseText = data.candidates[0].content.parts[0].text;
+      console.log('[Gemini API Response Text]:', responseText);
+      console.log('[Gemini API Response Length]:', responseText.length);
+
+      return this.parseAIResponse(responseText);
     }
   }
 
@@ -1027,15 +1057,21 @@ class FormAnalyzer {
     console.log('[parseAIResponse] Raw AI response text:', text);
     console.log('[parseAIResponse] Response length:', text.length);
 
-    const lines = text.split('\n').filter(line => line.trim());
-
     const responses: string[] = [];
 
-    lines.forEach(line => {
-      const match = line.match(/^(\d+)\.\s*(.+)$/);
-      if (match) {
+    // Split by numbered items (1., 2., 3., etc.) and capture everything until the next number
+    const numberedItemRegex = /^(\d+)\.\s*/gm;
+    const matches = [...text.matchAll(numberedItemRegex)];
+
+    if (matches.length > 0) {
+      console.log('[parseAIResponse] Found numbered format with', matches.length, 'items');
+
+      matches.forEach((match, i) => {
         const index = parseInt(match[1]) - 1;
-        let value = match[2].trim();
+        const startPos = match.index! + match[0].length;
+        const endPos = i < matches.length - 1 ? matches[i + 1].index! : text.length;
+
+        let value = text.substring(startPos, endPos).trim();
 
         // Clean up the response
         // Remove markdown formatting: **text** -> text
@@ -1044,8 +1080,12 @@ class FormAnalyzer {
         // Remove "Field Name": prefix pattern
         value = value.replace(/^[^:]+:\s*/,  '');
 
-        // Remove explanation after [SKIP] or value
-        value = value.replace(/\s*-\s*.+$/, '');
+        // Remove explanation after [SKIP] or value (only if on same line)
+        // Don't remove hyphenated content in multi-line responses
+        const firstLine = value.split('\n')[0];
+        if (firstLine.includes('[SKIP]')) {
+          value = value.replace(/\s*-\s*.+$/, '');
+        }
 
         // Skip if explicitly [SKIP]
         if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
@@ -1053,11 +1093,25 @@ class FormAnalyzer {
         }
 
         responses[index] = value;
-        console.log(`[parseAIResponse] Parsed line ${index + 1}:`, value);
-      } else {
-        console.log('[parseAIResponse] Unparsed line:', line);
+        console.log(`[parseAIResponse] Parsed item ${index + 1}:`, value.substring(0, 150) + (value.length > 150 ? '...' : ''));
+      });
+    } else {
+      // No numbered format found, treat entire text as single response
+      console.log('[parseAIResponse] No numbered format detected, using entire text as response');
+      let value = text.trim();
+
+      // Clean up the response
+      value = value.replace(/\*\*(.+?)\*\*/g, '$1');
+      value = value.replace(/^[^:]+:\s*/,  '');
+
+      // Skip if explicitly [SKIP]
+      if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
+        value = '';
       }
-    });
+
+      responses[0] = value;
+      console.log('[parseAIResponse] Single response:', value.substring(0, 100) + '...');
+    }
 
     console.log('[parseAIResponse] Total responses parsed:', responses.length);
 
