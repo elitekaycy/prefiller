@@ -4,12 +4,16 @@
  */
 
 import toast from 'react-hot-toast';
+import { announceToScreenReader } from './accessibility';
 
 export const Toast = {
   /**
    * Show success message
    */
   success(message: string, duration = 3000) {
+    // Announce to screen readers
+    announceToScreenReader(message, 'polite');
+
     return toast.success(message, {
       duration,
       position: 'bottom-center',
@@ -33,6 +37,9 @@ export const Toast = {
    * Show error message
    */
   error(message: string, duration = 4000) {
+    // Announce to screen readers with assertive priority
+    announceToScreenReader(message, 'assertive');
+
     return toast.error(message, {
       duration,
       position: 'bottom-center',

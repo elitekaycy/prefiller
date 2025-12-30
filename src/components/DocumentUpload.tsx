@@ -142,9 +142,11 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
         borderColor: 'var(--gemini-border)'
       }}
     >
-      <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--gemini-text-primary)' }}>Documents</h3>
+      <h3 id="document-upload-heading" className="text-base font-semibold mb-3" style={{ color: 'var(--gemini-text-primary)' }}>Documents</h3>
 
       <div
+        role="region"
+        aria-labelledby="document-upload-heading"
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
           isProcessing ? 'opacity-50 pointer-events-none' : ''
         }`}
@@ -157,22 +159,25 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
         onDragLeave={handleDragLeave}
       >
         <div className="space-y-2">
-          <div className="text-2xl">{isProcessing ? '⏳' : '📄'}</div>
+          <div className="text-2xl" aria-hidden="true">{isProcessing ? '⏳' : '📄'}</div>
           <div style={{ color: 'var(--gemini-text-secondary)' }}>
             {isProcessing ? (
-              <div className="text-sm">
+              <div className="text-sm" role="status" aria-live="polite">
                 {parsingStatus || 'Processing document...'}
               </div>
             ) : (
               <>
                 Drag & drop documents here or{' '}
-                <label className="cursor-pointer underline" style={{ color: 'var(--gemini-accent)' }}>
+                <label htmlFor="file-upload" className="cursor-pointer underline" style={{ color: 'var(--gemini-accent)' }}>
                   browse files
                   <input
+                    id="file-upload"
                     type="file"
                     multiple
                     accept=".txt,.pdf,.doc,.docx"
                     className="hidden"
+                    aria-label="Upload PDF, TXT, DOC, or DOCX documents"
+                    aria-describedby="file-upload-help"
                     onChange={(e) => {
                       const target = e.target as HTMLInputElement;
                       if (target.files) {
@@ -184,7 +189,7 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
               </>
             )}
           </div>
-          <div className="text-sm" style={{ color: 'var(--gemini-text-secondary)' }}>
+          <div id="file-upload-help" className="text-sm" style={{ color: 'var(--gemini-text-secondary)' }}>
             Supports: TXT, PDF, DOC, DOCX
           </div>
         </div>
@@ -192,6 +197,8 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
 
       {error && (
         <div
+          role="alert"
+          aria-live="assertive"
           className="mt-3 p-2 rounded-lg text-xs border"
           style={{
             backgroundColor: 'rgba(242, 139, 130, 0.1)',
@@ -205,6 +212,8 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
 
       {parsingStatus && !isProcessing && (
         <div
+          role="status"
+          aria-live="polite"
           className="mt-3 p-2 rounded-lg text-xs border"
           style={{
             backgroundColor: 'rgba(129, 201, 149, 0.1)',
@@ -217,33 +226,39 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
       )}
 
       {documents.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <h4 className="font-medium" style={{ color: 'var(--gemini-text-primary)' }}>Uploaded Documents</h4>
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              className="flex items-center justify-between p-3 rounded-md border"
-              style={{
-                backgroundColor: 'var(--gemini-bg)',
-                borderColor: 'var(--gemini-border)'
-              }}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sm">📄</span>
-                <span className="text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>{doc.name}</span>
-                <span className="text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
-                  {new Date(doc.uploadedAt).toLocaleDateString()}
-                </span>
-              </div>
-              <button
-                onClick={() => removeDocument(doc.id)}
-                className="text-gray-500 hover:text-red-600 transition-colors"
-                aria-label="Remove document"
+        <div className="mt-4 space-y-2" role="region" aria-labelledby="uploaded-docs-heading">
+          <h4 id="uploaded-docs-heading" className="font-medium" style={{ color: 'var(--gemini-text-primary)' }}>
+            Uploaded Documents ({documents.length})
+          </h4>
+          <ul role="list" className="space-y-2">
+            {documents.map((doc) => (
+              <li
+                key={doc.id}
+                role="listitem"
+                className="flex items-center justify-between p-3 rounded-md border"
+                style={{
+                  backgroundColor: 'var(--gemini-bg)',
+                  borderColor: 'var(--gemini-border)'
+                }}
               >
-                <span className="material-symbols-outlined text-base">delete</span>
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm" aria-hidden="true">📄</span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--gemini-text-primary)' }}>{doc.name}</span>
+                  <span className="text-xs" style={{ color: 'var(--gemini-text-secondary)' }}>
+                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeDocument(doc.id)}
+                  className="text-gray-500 hover:text-red-600 transition-colors"
+                  aria-label={`Remove ${doc.name}`}
+                >
+                  <span className="material-symbols-outlined text-base" aria-hidden="true">delete</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

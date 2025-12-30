@@ -263,8 +263,10 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
           variant="primary"
           size="lg"
           className="w-full"
+          aria-label="Analyze page and fill forms with uploaded document data"
+          aria-busy={isProcessing}
         >
-          <span className="material-symbols-outlined">auto_fix_high</span>
+          <span className="material-symbols-outlined" aria-hidden="true">auto_fix_high</span>
           <span>{isProcessing ? 'Processing...' : 'Analyze & Fill Forms'}</span>
         </Button>
       </FixedFooter>
