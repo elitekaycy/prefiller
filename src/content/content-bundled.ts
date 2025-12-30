@@ -671,6 +671,126 @@ interface IAIProvider {
  * Base AI Provider with common functionality
  */
 abstract class BaseAIProvider implements IAIProvider {
+  private readonly MAX_RETRIES = 3;
+  private readonly BASE_DELAY_MS = 1000; // 1 second base delay
+
+  /**
+   * Retry an operation with exponential backoff
+   * Delays: 1s, 2s, 4s (for 3 retries)
+   */
+  protected async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`[${operationName}] Retry attempt ${attempt} of ${this.MAX_RETRIES}...`);
+        }
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Check if error is retryable
+        if (!this.isRetryableError(lastError)) {
+          console.error(`[${operationName}] Non-retryable error:`, lastError.message);
+          throw lastError;
+        }
+
+        // Last attempt - throw error
+        if (attempt === this.MAX_RETRIES) {
+          console.error(`[${operationName}] Max retries (${this.MAX_RETRIES}) exceeded`);
+          throw new Error(`Failed after ${this.MAX_RETRIES + 1} attempts: ${lastError.message}`);
+        }
+
+        // Calculate delay with exponential backoff: 1s, 2s, 4s
+        const delay = this.BASE_DELAY_MS * Math.pow(2, attempt);
+        console.warn(`[${operationName}] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`, {
+          error: lastError.message,
+          nextAttempt: attempt + 2,
+          maxRetries: this.MAX_RETRIES + 1,
+          delay: `${delay / 1000}s`
+        });
+
+        // Wait before retry
+        await this.sleep(delay);
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /**
+   * Determine if an error is retryable
+   * Non-retryable: Authentication, authorization, invalid requests (4xx client errors)
+   * Retryable: Network issues, rate limits, server errors (5xx), timeouts
+   */
+  private isRetryableError(error: Error): boolean {
+    const message = error.message.toLowerCase();
+
+    // Non-retryable errors (client errors - fix required)
+    const nonRetryablePatterns = [
+      'invalid api key',
+      'api key',
+      'authentication failed',
+      'unauthorized',
+      '401',
+      'forbidden',
+      '403',
+      'invalid request',
+      '400',
+      'not found',
+      '404',
+      'method not allowed',
+      '405'
+    ];
+
+    for (const pattern of nonRetryablePatterns) {
+      if (message.includes(pattern)) {
+        return false;
+      }
+    }
+
+    // Retryable errors (transient issues - may succeed on retry)
+    const retryablePatterns = [
+      'network',
+      'timeout',
+      'rate limit',
+      '429',
+      'too many requests',
+      'server error',
+      '500',
+      'bad gateway',
+      '502',
+      'service unavailable',
+      '503',
+      'gateway timeout',
+      '504',
+      'connection',
+      'fetch failed',
+      'etimedout',
+      'econnreset'
+    ];
+
+    for (const pattern of retryablePatterns) {
+      if (message.includes(pattern)) {
+        return true;
+      }
+    }
+
+    // Default: retry for unknown errors (conservative approach)
+    return true;
+  }
+
+  /**
+   * Sleep utility for delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   protected parseAIResponse(text: string): string[] {
     console.log('[parseAIResponse] Raw AI response text:', text);
     console.log('[parseAIResponse] Response length:', text.length);
@@ -746,54 +866,56 @@ abstract class BaseAIProvider implements IAIProvider {
  */
 class ClaudeProvider extends BaseAIProvider {
   async generateResponse(prompt: string, apiKey: string): Promise<string[]> {
-    console.log('[Claude API Request]:', {
-      keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
-      keyLength: apiKey.length,
-      model: 'claude-3-5-sonnet-20241022'
-    });
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Claude API Error]:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody: errorText
+    return this.retryWithBackoff(async () => {
+      console.log('[Claude API Request]:', {
+        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+        keyLength: apiKey.length,
+        model: 'claude-3-5-sonnet-20241022'
       });
-      throw new Error(`Claude API request failed: ${response.status} ${response.statusText}\n${errorText}`);
-    }
 
-    const data = await response.json();
-    console.log('[Claude API Success]:', { hasContent: !!data.content, contentLength: data.content?.length || 0 });
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        })
+      });
 
-    if (!data.content || data.content.length === 0) {
-      throw new Error('No response from Claude API');
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Claude API Error]:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`Claude API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
 
-    const responseText = data.content[0].text;
-    console.log('[Claude API Response Text]:', responseText);
-    console.log('[Claude API Response Length]:', responseText.length);
+      const data = await response.json();
+      console.log('[Claude API Success]:', { hasContent: !!data.content, contentLength: data.content?.length || 0 });
 
-    return this.parseAIResponse(responseText);
+      if (!data.content || data.content.length === 0) {
+        throw new Error('No response from Claude API');
+      }
+
+      const responseText = data.content[0].text;
+      console.log('[Claude API Response Text]:', responseText);
+      console.log('[Claude API Response Length]:', responseText.length);
+
+      return this.parseAIResponse(responseText);
+    }, 'Claude API');
   }
 
   validateApiKeyFormat(apiKey: string): boolean {
@@ -810,48 +932,50 @@ class ClaudeProvider extends BaseAIProvider {
  */
 class GroqProvider extends BaseAIProvider {
   async generateResponse(prompt: string, apiKey: string): Promise<string[]> {
-    console.log('[Groq API Request]:', {
-      keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
-      keyLength: apiKey.length,
-      model: 'llama-3.3-70b-versatile'
-    });
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4,
-        max_tokens: 1024
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Groq API Error]:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody: errorText
+    return this.retryWithBackoff(async () => {
+      console.log('[Groq API Request]:', {
+        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+        keyLength: apiKey.length,
+        model: 'llama-3.3-70b-versatile'
       });
-      throw new Error(`Groq API request failed: ${response.status} ${response.statusText}\n${errorText}`);
-    }
 
-    const data = await response.json();
-    console.log('[Groq API Success]:', { hasChoices: !!data.choices, choicesLength: data.choices?.length || 0 });
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.4,
+          max_tokens: 1024
+        })
+      });
 
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error('No response from Groq API');
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Groq API Error]:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`Groq API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
 
-    const responseText = data.choices[0].message.content;
-    console.log('[Groq API Response Text]:', responseText);
-    console.log('[Groq API Response Length]:', responseText.length);
+      const data = await response.json();
+      console.log('[Groq API Success]:', { hasChoices: !!data.choices, choicesLength: data.choices?.length || 0 });
 
-    return this.parseAIResponse(responseText);
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error('No response from Groq API');
+      }
+
+      const responseText = data.choices[0].message.content;
+      console.log('[Groq API Response Text]:', responseText);
+      console.log('[Groq API Response Length]:', responseText.length);
+
+      return this.parseAIResponse(responseText);
+    }, 'Groq API');
   }
 
   validateApiKeyFormat(apiKey: string): boolean {
@@ -868,48 +992,50 @@ class GroqProvider extends BaseAIProvider {
  */
 class GeminiProvider extends BaseAIProvider {
   async generateResponse(prompt: string, apiKey: string): Promise<string[]> {
-    console.log('[Gemini API Request]:', {
-      keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
-      keyLength: apiKey.length,
-      model: 'gemini-2.5-flash'
-    });
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Gemini API Error]:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody: errorText
+    return this.retryWithBackoff(async () => {
+      console.log('[Gemini API Request]:', {
+        keyPreview: `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`,
+        keyLength: apiKey.length,
+        model: 'gemini-2.5-flash'
       });
-      throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}\n${errorText}`);
-    }
 
-    const data = await response.json();
-    console.log('[Gemini API Success]:', { hasCandidates: !!data.candidates, candidatesLength: data.candidates?.length || 0 });
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
 
-    if (!data.candidates || !data.candidates[0]) {
-      throw new Error('Invalid response from Gemini API');
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Gemini API Error]:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorText
+        });
+        throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
 
-    const responseText = data.candidates[0].content.parts[0].text;
-    console.log('[Gemini API Response Text]:', responseText);
-    console.log('[Gemini API Response Length]:', responseText.length);
+      const data = await response.json();
+      console.log('[Gemini API Success]:', { hasCandidates: !!data.candidates, candidatesLength: data.candidates?.length || 0 });
 
-    return this.parseAIResponse(responseText);
+      if (!data.candidates || !data.candidates[0]) {
+        throw new Error('Invalid response from Gemini API');
+      }
+
+      const responseText = data.candidates[0].content.parts[0].text;
+      console.log('[Gemini API Response Text]:', responseText);
+      console.log('[Gemini API Response Length]:', responseText.length);
+
+      return this.parseAIResponse(responseText);
+    }, 'Gemini API');
   }
 
   validateApiKeyFormat(apiKey: string): boolean {
