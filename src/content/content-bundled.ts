@@ -427,6 +427,20 @@ class FormScraper {
     console.log('[Prompt Builder] Optimized info length:', optimizedInfo.length);
     console.log('[Prompt Builder] Optimized info preview:', optimizedInfo.substring(0, 500));
 
+    console.log('[Prompt Builder] Form fields detected:', fields.length);
+    fields.forEach((field, index) => {
+      console.log(`[Field ${index + 1}]:`, {
+        label: field.label,
+        placeholder: field.placeholder,
+        description: field.description,
+        context: field.context,
+        type: field.type,
+        name: field.name,
+        required: field.required,
+        options: field.options?.length ? `${field.options.length} options` : undefined
+      });
+    });
+
     let prompt = `You are an intelligent form-filling assistant. Your job is to carefully read and understand the personal information document provided, then intelligently fill out form fields based on that information.\n\n`;
 
     prompt += `=== PERSONAL INFORMATION DOCUMENT ===\n${optimizedInfo}\n\n`;
@@ -782,18 +796,36 @@ class FormAnalyzer {
     this.showNotification(`🔍 Analyzing ${this.scrapedFields.length} form fields...`, 'loading');
 
     try {
+      console.log('[fillForms] Documents from settings:', settings.documents);
+
       let personalInfo = 'Personal Information:\n';
       settings.documents.forEach((doc: any) => {
+        console.log('[fillForms] Processing document:', {
+          name: doc.name,
+          contentLength: doc.content?.length || 0,
+          contentPreview: doc.content?.substring(0, 300),
+          hasContent: !!doc.content,
+          documentKeys: Object.keys(doc)
+        });
         personalInfo += `\n${doc.name}:\n${doc.content}\n`;
       });
 
+      console.log('[fillForms] Final personalInfo length:', personalInfo.length);
+      console.log('[fillForms] Final personalInfo preview (first 500 chars):', personalInfo.substring(0, 500));
+
       const prompt = this.scraper.buildAIPrompt(this.scrapedFields, personalInfo);
+
+      console.log('[fillForms] Complete prompt being sent to AI:', prompt);
+      console.log('[fillForms] Prompt length:', prompt.length);
 
       const providerName = settings.aiProvider === 'claude' ? 'Anthropic Claude' : settings.aiProvider === 'groq' ? 'Groq' : 'Google Gemini';
       this.showNotification(`🤖 Generating responses with ${providerName}...`, 'loading');
 
       const responses = await this.getAIResponses(settings.aiProvider, decodedApiKey, prompt);
+
+      console.log('[fillForms] AI responses received:', responses.length);
       responses.forEach((resp, i) => {
+        console.log(`[Response ${i + 1}]:`, resp);
       });
 
       this.showNotification('✨ Filling form fields...', 'loading');
@@ -978,6 +1010,8 @@ class FormAnalyzer {
   }
 
   private parseAIResponse(text: string): string[] {
+    console.log('[parseAIResponse] Raw AI response text:', text);
+    console.log('[parseAIResponse] Response length:', text.length);
 
     const lines = text.split('\n').filter(line => line.trim());
 
@@ -989,9 +1023,13 @@ class FormAnalyzer {
         const index = parseInt(match[1]) - 1;
         const value = match[2].trim();
         responses[index] = value === '[SKIP]' ? '' : value;
+        console.log(`[parseAIResponse] Parsed line ${index + 1}:`, value);
       } else {
+        console.log('[parseAIResponse] Unparsed line:', line);
       }
     });
+
+    console.log('[parseAIResponse] Total responses parsed:', responses.length);
 
     return responses;
   }
