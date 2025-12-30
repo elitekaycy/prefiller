@@ -498,12 +498,20 @@ class FormScraper {
     prompt += `- For simple fields: EXTRACT data from the document\n`;
     prompt += `- For open-ended questions: GENERATE intelligent, personalized responses\n`;
     prompt += `- DO NOT copy/paste the field label or placeholder as the answer\n`;
+    prompt += `- DO NOT skip optional or personal fields - fill them intelligently using document info\n`;
+    prompt += `- For missing data: Make EDUCATED GUESSES based on context from the document\n`;
+    prompt += `  * Example: If document shows software experience, infer years based on project dates/timeline\n`;
+    prompt += `  * Example: If location mentioned, infer work authorization for that country\n`;
+    prompt += `  * Example: If pronouns not stated, infer from name if possible or use "they/them"\n`;
     prompt += `- For select fields, choose the best matching option\n`;
     prompt += `- For dates: use format specified or default to MM/DD/YYYY\n`;
     prompt += `- For phones: use format specified or default to (XXX) XXX-XXXX\n`;
     prompt += `- Respect maxLength and pattern constraints\n`;
-    prompt += `- Only use "[SKIP]" if the document contains absolutely no relevant information\n`;
-    prompt += `- Be intelligent, contextual, and professional\n`;
+    prompt += `- ONLY use "[SKIP]" for file upload fields or truly impossible fields\n`;
+    prompt += `- Be intelligent, contextual, professional, and THOROUGH\n`;
+    prompt += `- RESPONSE FORMAT: Provide ONLY the value, no explanations or markdown\n`;
+    prompt += `  * WRONG: "**First Name**: Dickson"\n`;
+    prompt += `  * CORRECT: "Dickson"\n`;
 
     return prompt;
   }
@@ -800,14 +808,20 @@ class FormAnalyzer {
 
       let personalInfo = 'Personal Information:\n';
       settings.documents.forEach((doc: any) => {
+        // Use parsedData.rawText if available, fallback to parsedData.text, then content
+        const documentText = doc.parsedData?.rawText || doc.parsedData?.text || doc.content;
+
         console.log('[fillForms] Processing document:', {
           name: doc.name,
-          contentLength: doc.content?.length || 0,
-          contentPreview: doc.content?.substring(0, 300),
-          hasContent: !!doc.content,
+          hasParsedData: !!doc.parsedData,
+          hasRawText: !!doc.parsedData?.rawText,
+          hasText: !!doc.parsedData?.text,
+          textLength: documentText?.length || 0,
+          textPreview: documentText?.substring(0, 500),
           documentKeys: Object.keys(doc)
         });
-        personalInfo += `\n${doc.name}:\n${doc.content}\n`;
+
+        personalInfo += `\n${doc.name}:\n${documentText}\n`;
       });
 
       console.log('[fillForms] Final personalInfo length:', personalInfo.length);
@@ -1021,8 +1035,24 @@ class FormAnalyzer {
       const match = line.match(/^(\d+)\.\s*(.+)$/);
       if (match) {
         const index = parseInt(match[1]) - 1;
-        const value = match[2].trim();
-        responses[index] = value === '[SKIP]' ? '' : value;
+        let value = match[2].trim();
+
+        // Clean up the response
+        // Remove markdown formatting: **text** -> text
+        value = value.replace(/\*\*(.+?)\*\*/g, '$1');
+
+        // Remove "Field Name": prefix pattern
+        value = value.replace(/^[^:]+:\s*/,  '');
+
+        // Remove explanation after [SKIP] or value
+        value = value.replace(/\s*-\s*.+$/, '');
+
+        // Skip if explicitly [SKIP]
+        if (value === '[SKIP]' || value.startsWith('[SKIP]')) {
+          value = '';
+        }
+
+        responses[index] = value;
         console.log(`[parseAIResponse] Parsed line ${index + 1}:`, value);
       } else {
         console.log('[parseAIResponse] Unparsed line:', line);
