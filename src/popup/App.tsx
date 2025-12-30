@@ -172,12 +172,20 @@ export function App() {
     <>
       <Toaster />
       <div className="gemini-container">
+        {/* Skip to main content link */}
+        <a href="#main-content" className="skip-to-main">
+          Skip to main content
+        </a>
+
+        {/* Screen reader only main heading */}
+        <h1 className="sr-only">Prefiller - AI Form Auto-Fill Extension</h1>
+
         <div className="rainbow-border">
-          <div className="gemini-content">
+          <main id="main-content" role="main" className="gemini-content">
             <div className="step-container">
               {renderCurrentStep()}
             </div>
-          </div>
+          </main>
         </div>
       </div>
     </>

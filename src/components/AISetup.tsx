@@ -195,96 +195,122 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   return (
     <div className="flex flex-col h-full">
       <div className="step-header">
-        <div className="step-title">Choose AI Provider</div>
-        <div className="step-subtitle">
+        <h2 className="step-title">Choose AI Provider</h2>
+        <p className="step-subtitle">
           Select your preferred AI service
-        </div>
+        </p>
       </div>
 
       <div className="flex-1 space-y-4 pb-20">
         {/* Provider Selection */}
         <div className="space-y-3">
-          <label className="text-sm font-medium text-gray-700">AI Provider</label>
-          <div className="grid grid-cols-1 gap-3">
+          <label id="provider-selection-label" className="text-sm font-medium text-gray-700">AI Provider</label>
+          <div role="radiogroup" aria-labelledby="provider-selection-label" className="grid grid-cols-1 gap-3">
             {/* Groq Option - RECOMMENDED */}
-            <div
+            <button
+              type="button"
+              role="radio"
+              aria-checked={aiProvider === 'groq'}
+              aria-label="Groq - Recommended provider for fast, reliable AI processing"
               className={`provider-card ${aiProvider === 'groq' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('groq')}
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">Groq <span className="text-sm text-blue-600 font-semibold">(RECOMMENDED)</span></div>
-                <div className={`radio ${aiProvider === 'groq' ? 'checked' : ''}`}>
+                <div className="provider-name">Groq <span className="text-sm text-blue-600 font-semibold" aria-hidden="true">(RECOMMENDED)</span></div>
+                <div className={`radio ${aiProvider === 'groq' ? 'checked' : ''}`} aria-hidden="true">
                   {aiProvider === 'groq' && <div className="radio-dot"></div>}
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Gemini Option */}
-            <div
+            <button
+              type="button"
+              role="radio"
+              aria-checked={aiProvider === 'gemini'}
+              aria-label="Google Gemini - AI provider by Google"
               className={`provider-card ${aiProvider === 'gemini' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('gemini')}
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">Google Gemini</div>
-                <div className={`radio ${aiProvider === 'gemini' ? 'checked' : ''}`}>
+                <div className={`radio ${aiProvider === 'gemini' ? 'checked' : ''}`} aria-hidden="true">
                   {aiProvider === 'gemini' && <div className="radio-dot"></div>}
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* OpenRouter Option - DISABLED */}
-            <div
+            <button
+              type="button"
+              role="radio"
+              aria-checked={false}
+              aria-disabled="true"
+              aria-label="OpenRouter - Currently disabled"
               className="provider-card opacity-50 cursor-not-allowed"
-              style={{ pointerEvents: 'none' }}
+              disabled
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">OpenRouter <span className="text-sm text-gray-500">(DISABLED)</span></div>
-                <div className="radio">
+                <div className="provider-name">OpenRouter <span className="text-sm text-gray-500" aria-hidden="true">(DISABLED)</span></div>
+                <div className="radio" aria-hidden="true">
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* HuggingFace Option - DISABLED */}
-            <div
+            <button
+              type="button"
+              role="radio"
+              aria-checked={false}
+              aria-disabled="true"
+              aria-label="HuggingFace - Currently disabled"
               className="provider-card opacity-50 cursor-not-allowed"
-              style={{ pointerEvents: 'none' }}
+              disabled
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">HuggingFace <span className="text-sm text-gray-500">(DISABLED)</span></div>
-                <div className="radio">
+                <div className="provider-name">HuggingFace <span className="text-sm text-gray-500" aria-hidden="true">(DISABLED)</span></div>
+                <div className="radio" aria-hidden="true">
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Claude Option - TESTING */}
-            <div
+            <button
+              type="button"
+              role="radio"
+              aria-checked={aiProvider === 'claude'}
+              aria-label="Anthropic Claude - AI provider currently in testing"
               className={`provider-card ${aiProvider === 'claude' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('claude')}
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">Anthropic Claude <span className="text-sm text-gray-500">(TESTING)</span></div>
-                <div className={`radio ${aiProvider === 'claude' ? 'checked' : ''}`}>
+                <div className="provider-name">Anthropic Claude <span className="text-sm text-gray-500" aria-hidden="true">(TESTING)</span></div>
+                <div className={`radio ${aiProvider === 'claude' ? 'checked' : ''}`} aria-hidden="true">
                   {aiProvider === 'claude' && <div className="radio-dot"></div>}
                 </div>
               </div>
-            </div>
+            </button>
 
             {/* Chrome AI Option */}
-            <div
+            <button
+              type="button"
+              role="radio"
+              aria-checked={aiProvider === 'chromeai'}
+              aria-label={`Chrome AI - Free local AI processing${chromeAIAvailable === true ? ' - Available' : chromeAIAvailable === false ? ' - Setup required' : ''}`}
               className={`provider-card ${aiProvider === 'chromeai' ? 'selected' : ''}`}
               onClick={() => handleProviderChange('chromeai')}
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">
-                  Chrome AI <span className="text-sm text-blue-600">(FREE)</span>
-                  {chromeAIAvailable === true && <span className="text-green-600 ml-2 text-sm">✓</span>}
-                  {chromeAIAvailable === false && <span className="text-orange-600 ml-2 text-sm">Setup Required</span>}
+                  Chrome AI <span className="text-sm text-blue-600" aria-hidden="true">(FREE)</span>
+                  {chromeAIAvailable === true && <span className="text-green-600 ml-2 text-sm" aria-hidden="true">✓</span>}
+                  {chromeAIAvailable === false && <span className="text-orange-600 ml-2 text-sm" aria-hidden="true">Setup Required</span>}
                 </div>
-                <div className={`radio ${aiProvider === 'chromeai' ? 'checked' : ''}`}>
+                <div className={`radio ${aiProvider === 'chromeai' ? 'checked' : ''}`} aria-hidden="true">
                   {aiProvider === 'chromeai' && <div className="radio-dot"></div>}
                 </div>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -292,12 +318,14 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         {aiProvider !== 'chromeai' ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-gray-700">
-                API Key
+              <label htmlFor="api-key-input" className="text-sm font-medium text-gray-700">
+                API Key <span aria-label="required" className="text-red-500">*</span>
               </label>
               <button
+                type="button"
                 onClick={openApiKeyPage}
                 className="text-blue-600 hover:text-blue-700 text-xs"
+                aria-label={`Get API key for ${aiProvider}`}
               >
                 Get Key →
               </button>
@@ -305,13 +333,20 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
 
             <div className="relative">
               <input
+                id="api-key-input"
                 type={showKey ? 'text' : 'password'}
                 value={inputValue}
                 onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
                 placeholder={`Enter your API key`}
                 className="input-field pr-20"
                 disabled={hasExistingKey}
+                aria-required="true"
+                aria-invalid={connectionStatus === 'error'}
+                aria-describedby={connectionStatus === 'error' ? 'api-key-error' : 'api-key-help'}
               />
+              <span id="api-key-help" className="sr-only">
+                Your API key is stored locally and encrypted for security.
+              </span>
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
                 {hasExistingKey && (
                   <button
@@ -320,7 +355,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                     className="text-gray-500 hover:text-gray-700"
                     aria-label="Edit API key"
                   >
-                    <span className="material-symbols-outlined text-sm">edit</span>
+                    <span className="material-symbols-outlined text-sm" aria-hidden="true">edit</span>
                   </button>
                 )}
                 <button
@@ -328,8 +363,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                   onClick={() => setShowKey(!showKey)}
                   className="text-gray-500 hover:text-gray-700"
                   aria-label={showKey ? 'Hide API key' : 'Show API key'}
+                  aria-pressed={showKey}
                 >
-                  <span className="material-symbols-outlined text-sm">
+                  <span className="material-symbols-outlined text-sm" aria-hidden="true">
                     {showKey ? 'visibility' : 'visibility_off'}
                   </span>
                 </button>
@@ -371,6 +407,9 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         {/* Status Messages */}
         {connectionStatus === 'error' && (
           <div
+            id="api-key-error"
+            role="alert"
+            aria-live="assertive"
             className="rounded-lg border p-3"
             style={{
               backgroundColor: 'rgba(242, 139, 130, 0.1)',
@@ -382,9 +421,11 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             </div>
             {showSkipOption && (
               <button
+                type="button"
                 onClick={handleSkipTest}
                 className="mt-2 text-xs underline"
                 style={{ color: 'var(--gemini-error)' }}
+                aria-label="Skip API key verification and continue anyway"
               >
                 Skip verification and continue anyway
               </button>

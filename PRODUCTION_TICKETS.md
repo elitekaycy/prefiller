@@ -280,40 +280,6 @@
 
 ---
 
-#### **TICKET-009: Add Error Tracking & Monitoring** 🟡
-**Priority:** MEDIUM
-**Effort:** 2 days
-**Status:** ❌ Not Started
-
-**Problem:**
-- No error tracking in production
-- Can't debug user issues
-- No visibility into production bugs
-
-**Requirements:**
-- [ ] Install Sentry or similar
-- [ ] Configure error tracking
-- [ ] Add user context to errors
-- [ ] Set up alerts for critical errors
-- [ ] Add custom error boundaries
-- [ ] Track API errors separately
-
-**Acceptance Criteria:**
-- All errors sent to Sentry
-- User context included (no PII)
-- Alerts for critical errors
-- Error dashboards accessible
-
-**Files to Change:**
-- Add `src/utils/errorTracking.ts`
-- `src/popup/App.tsx` (error boundary)
-- `src/utils/ai/BaseAIProvider.ts`
-- `src/background/background.ts`
-
-**Dependencies:** None
-
----
-
 ### Performance & Optimization
 
 #### **TICKET-010: Implement Cache Size Limits** 🟡
@@ -347,30 +313,6 @@
 **Dependencies:** None
 
 ---
-
-#### **TICKET-011: Add Data Export/Import** 🟡
-**Priority:** MEDIUM
-**Effort:** 2 days
-**Status:** ❌ Not Started
-
-**Problem:**
-- No backup functionality
-- Users can't export their data
-- Can't transfer between browsers
-
-**Requirements:**
-- [ ] Export all data to JSON
-- [ ] Import data from JSON
-- [ ] Validate import data
-- [ ] Add export/import UI
-- [ ] Include documents, settings, but NOT API keys
-
-**Acceptance Criteria:**
-- User can export all data
-- User can import data
-- Data validated before import
-- No API keys in export
-
 **Files to Change:**
 - Add `src/utils/dataExport.ts`
 - Add settings page with export/import buttons
@@ -564,35 +506,6 @@
 **Files to Change:**
 - Add `src/hooks/useKeyboardShortcuts.ts`
 - All component files
-
-**Dependencies:** None
-
----
-
-#### **TICKET-019: Analytics & Usage Tracking** 🟢
-**Priority:** LOW
-**Effort:** 2 days
-**Status:** ❌ Not Started
-
-**Problem:**
-- No visibility into feature usage
-- Can't prioritize improvements
-- No conversion tracking
-
-**Requirements:**
-- [ ] Install analytics (privacy-focused)
-- [ ] Track feature usage
-- [ ] Track errors (non-PII)
-- [ ] Track performance metrics
-- [ ] Privacy-compliant (GDPR)
-
-**Acceptance Criteria:**
-- Events tracked (no PII)
-- Dashboard accessible
-- Opt-out mechanism
-
-**Files to Create:**
-- `src/utils/analytics.ts`
 
 **Dependencies:** None
 
@@ -829,7 +742,6 @@
 - TICKET-004: Retry Logic (2 days)
 - TICKET-005: Timeout Handling (1 day)
 - TICKET-006: Rate Limiting (3 days)
-- TICKET-009: Error Tracking (2 days)
 
 **Goal:** Make extension reliable and production-ready
 
@@ -857,10 +769,8 @@
 ## Post-Launch Sprints
 
 ### Sprint 5+: Performance & Features
-- TICKET-011: Data Export/Import
 - TICKET-012: Bundle Optimization
 - TICKET-015: DOCX Parser
-- TICKET-017: Dark Mode
 - TICKET-020: User Documentation
 
 ---
