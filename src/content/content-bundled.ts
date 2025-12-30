@@ -392,49 +392,87 @@ class FormScraper {
       .join(' ');
   }
 
+  /**
+   * Extract structured data from unstructured text
+   * Looks for patterns like "Name: John", "Email: test@example.com", etc.
+   */
+  private extractKeyInfo(text: string): string {
+    const lines = text.split('\n');
+    const relevantLines: string[] = [];
+
+    // Common form field patterns to look for
+    const patterns = [
+      /^(name|full name|first name|last name|middle name)[\s:]+(.+)/i,
+      /^(email|e-mail|email address)[\s:]+(.+)/i,
+      /^(phone|telephone|mobile|cell)[\s:]+(.+)/i,
+      /^(address|street|city|state|zip|postal|country)[\s:]+(.+)/i,
+      /^(dob|date of birth|birthday|birth date)[\s:]+(.+)/i,
+      /^(ssn|social security|tax id|tin)[\s:]+(.+)/i,
+      /^(company|organization|employer)[\s:]+(.+)/i,
+      /^(title|position|job title|role)[\s:]+(.+)/i,
+      /^(education|degree|school|university|college)[\s:]+(.+)/i,
+      /^(experience|years of experience|work history)[\s:]+(.+)/i,
+      /^(skill|skills|expertise|competencies)[\s:]+(.+)/i,
+      /^(license|certification|certificate)[\s:]+(.+)/i,
+    ];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.length < 3) continue;
+
+      // Check if line matches any important pattern
+      let isRelevant = false;
+      for (const pattern of patterns) {
+        if (pattern.test(trimmed)) {
+          isRelevant = true;
+          break;
+        }
+      }
+
+      // Also include lines that look like key-value pairs
+      if (!isRelevant && /^[A-Za-z\s]+[:;-]\s*.{2,}/.test(trimmed)) {
+        isRelevant = true;
+      }
+
+      if (isRelevant) {
+        relevantLines.push(trimmed);
+      }
+    }
+
+    // If we extracted very little, include more context (first 5000 chars)
+    if (relevantLines.length < 5) {
+      return text.substring(0, 5000) + (text.length > 5000 ? '\n...[truncated]' : '');
+    }
+
+    return relevantLines.join('\n');
+  }
+
   buildAIPrompt(fields: FieldMetadata[], personalInfo: string): string {
+    // Extract only relevant information from documents
+    const optimizedInfo = this.extractKeyInfo(personalInfo);
+
     let prompt = `You are a form-filling assistant. Fill out the form fields based on the personal information provided.\n\n`;
 
-    prompt += `=== PERSONAL INFORMATION ===\n${personalInfo}\n\n`;
+    prompt += `=== PERSONAL INFORMATION ===\n${optimizedInfo}\n\n`;
 
     prompt += `=== FORM FIELDS TO FILL ===\n`;
 
+    // Use more concise format while keeping all important details
     fields.forEach((field, index) => {
-      prompt += `\nField ${index + 1}:\n`;
-      prompt += `- Label: ${field.label || 'Unknown'}\n`;
-      prompt += `- Type: ${field.type}\n`;
+      prompt += `${index + 1}. ${field.label || field.placeholder || field.name || 'Field'} (${field.type})`;
 
-      if (field.placeholder) {
-        prompt += `- Placeholder: ${field.placeholder}\n`;
-      }
-
-      if (field.description) {
-        prompt += `- Description: ${field.description}\n`;
-      }
-
-      if (field.context) {
-        prompt += `- Context: ${field.context}\n`;
-      }
-
-      if (field.required) {
-        prompt += `- REQUIRED FIELD\n`;
-      }
+      if (field.required) prompt += ` *REQUIRED*`;
 
       if (field.options && field.options.length > 0) {
-        prompt += `- Options: ${field.options.slice(0, 10).join(', ')}\n`;
+        prompt += ` - Options: ${field.options.slice(0, 8).join(', ')}`;
+        if (field.options.length > 8) prompt += ', ...';
       }
 
-      if (field.pattern) {
-        prompt += `- Pattern: ${field.pattern}\n`;
-      }
+      if (field.placeholder) prompt += ` - Format: ${field.placeholder}`;
+      if (field.pattern) prompt += ` - Pattern: ${field.pattern}`;
+      if (field.maxLength) prompt += ` - Max: ${field.maxLength}`;
 
-      if (field.maxLength) {
-        prompt += `- Max Length: ${field.maxLength}\n`;
-      }
-
-      if (field.min !== undefined || field.max !== undefined) {
-        prompt += `- Range: ${field.min} to ${field.max}\n`;
-      }
+      prompt += `\n`;
     });
 
     prompt += `\n=== INSTRUCTIONS ===\n`;
@@ -445,9 +483,7 @@ class FormScraper {
     prompt += `Rules:\n`;
     prompt += `- Use the personal information to provide accurate responses\n`;
     prompt += `- For select fields, choose from the provided options\n`;
-    prompt += `- For date fields, use MM/DD/YYYY format\n`;
-    prompt += `- For phone numbers, use standard format (e.g., (123) 456-7890)\n`;
-    prompt += `- For email, provide a valid email address\n`;
+    prompt += `- For dates/numbers, use the Format or Pattern specified for that field. If no format specified, default to: dates as MM/DD/YYYY, phones as (123) 456-7890\n`;
     prompt += `- Respect maxLength and pattern constraints\n`;
     prompt += `- If you don't have enough information, respond with "[SKIP]"\n`;
     prompt += `- Keep responses concise and appropriate for the field type\n`;
