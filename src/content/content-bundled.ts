@@ -28,22 +28,110 @@ interface FieldMetadata {
 }
 
 /**
- * Simple API Key Decoder (obfuscation only, NOT encryption)
- *
- * SECURITY NOTE: This uses a static SALT visible in source code.
- * This is simple obfuscation to prevent casual viewing, not real encryption.
- * chrome.storage.local provides the actual security boundary for the extension.
+ * Secure Encryption using Web Crypto API (AES-256-GCM)
  */
-class SimpleDecoder {
-  private static readonly SALT = 'prefiller-salt-2024';
+interface EncryptedData {
+  iv: string;
+  data: string;
+}
 
-  static decode(encodedText: string): string {
-    try {
-      const decoded = atob(encodedText);
-      return decodeURIComponent(escape(decoded)).replace(this.SALT, '');
-    } catch (error) {
-      return encodedText; // Return as-is if decoding fails
+const getCrypto = (): Crypto => {
+  if (typeof self !== 'undefined' && self.crypto) {
+    return self.crypto;
+  }
+  if (typeof globalThis !== 'undefined' && globalThis.crypto) {
+    return globalThis.crypto;
+  }
+  throw new Error('Web Crypto API not available');
+};
+
+class SecureEncryption {
+  private static readonly ALGORITHM = 'AES-GCM';
+  private static readonly KEY_LENGTH = 256;
+  private static readonly IV_LENGTH = 12;
+  private static readonly MASTER_KEY_STORAGE_KEY = '__master_encryption_key__';
+
+  private static masterKey: CryptoKey | null = null;
+
+  private static async getMasterKey(): Promise<CryptoKey> {
+    if (this.masterKey) {
+      return this.masterKey;
     }
+
+    try {
+      const cryptoApi = getCrypto();
+      const stored = await new Promise<any>((resolve) => {
+        chrome.storage.local.get(this.MASTER_KEY_STORAGE_KEY, resolve);
+      });
+
+      if (stored[this.MASTER_KEY_STORAGE_KEY]) {
+        const keyData = this.base64ToArrayBuffer(stored[this.MASTER_KEY_STORAGE_KEY]);
+        this.masterKey = await cryptoApi.subtle.importKey(
+          'raw',
+          keyData,
+          { name: this.ALGORITHM, length: this.KEY_LENGTH },
+          true,
+          ['encrypt', 'decrypt']
+        );
+      } else {
+        this.masterKey = await cryptoApi.subtle.generateKey(
+          { name: this.ALGORITHM, length: this.KEY_LENGTH },
+          true,
+          ['encrypt', 'decrypt']
+        );
+
+        const exportedKey = await cryptoApi.subtle.exportKey('raw', this.masterKey);
+        const keyBase64 = this.arrayBufferToBase64(exportedKey);
+        await new Promise<void>((resolve) => {
+          chrome.storage.local.set({ [this.MASTER_KEY_STORAGE_KEY]: keyBase64 }, () => resolve());
+        });
+      }
+
+      return this.masterKey;
+    } catch (error) {
+      throw new Error(`Failed to initialize encryption key: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  static async decrypt(encryptedString: string): Promise<string> {
+    try {
+      const cryptoApi = getCrypto();
+      const key = await this.getMasterKey();
+
+      const { iv, data }: EncryptedData = JSON.parse(encryptedString);
+
+      const ivBuffer = this.base64ToArrayBuffer(iv);
+      const dataBuffer = this.base64ToArrayBuffer(data);
+
+      const decryptedData = await cryptoApi.subtle.decrypt(
+        { name: this.ALGORITHM, iv: ivBuffer },
+        key,
+        dataBuffer
+      );
+
+      const decoder = new TextDecoder();
+      return decoder.decode(decryptedData);
+    } catch (error) {
+      throw new Error(`Decryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private static arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  private static base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
   }
 }
 
@@ -622,12 +710,27 @@ class FormAnalyzer {
   private async fillForms() {
     const settings = await this.getSettings();
 
-    if (!settings.apiKey || !settings.aiProvider) {
-      this.showNotification('Please configure your AI provider and API key first!', 'error');
+    // Debug: Show what we got with alert (impossible to miss)
+    alert(`DEBUG INFO:
+Provider: ${settings.aiProvider}
+Has API Key: ${!!settings.apiKey}
+Key Length: ${settings.apiKey?.length || 0}
+Documents: ${settings.documents.length}
+Is Enabled: ${settings.isEnabled}`);
+
+    if (!settings.aiProvider) {
+      this.showNotification('Please configure your AI provider first!', 'error');
       return;
     }
 
-    const decodedApiKey = SimpleDecoder.decode(settings.apiKey);
+    // Chrome AI doesn't need an API key
+    if (settings.aiProvider !== 'chromeai' && !settings.apiKey) {
+      this.showNotification('Please configure your API key first!', 'error');
+      return;
+    }
+
+    // API key is already decrypted from getSettings()
+    const decodedApiKey = settings.apiKey || '';
 
     if (this.scrapedFields.length === 0) {
       this.showNotification('No forms detected on this page.', 'error');
@@ -669,11 +772,57 @@ class FormAnalyzer {
   }
 
   private async getSettings(): Promise<any> {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(['settings'], (result) => {
-        resolve(result.settings || { aiProvider: 'claude', apiKey: '', documents: [], isEnabled: true });
+    try {
+      // Use new storage format: separate keys instead of single 'settings' object
+      const data = await new Promise<any>((resolve) => {
+        chrome.storage.local.get(null, resolve); // Get all storage
       });
-    });
+
+      console.log('[Content Script] Raw storage data:', Object.keys(data));
+
+      const aiProvider = data['settings.aiProvider'] || 'claude';
+      const isEnabled = data['settings.isEnabled'] ?? true;
+      const documents = data['documents.list'] || [];
+
+      // Get encrypted API key for current provider
+      const encryptedKey = data[`apiKeys.${aiProvider}`];
+      console.log('[Content Script] Getting API key:', { provider: aiProvider, hasEncryptedKey: !!encryptedKey });
+
+      let apiKey = '';
+      if (encryptedKey) {
+        try {
+          apiKey = await SecureEncryption.decrypt(encryptedKey);
+          console.log('[Content Script] API key decrypted:', { provider: aiProvider, keyLength: apiKey?.length || 0 });
+        } catch (error) {
+          console.error('[Content Script] Decryption failed:', error);
+        }
+      }
+
+      const settings = {
+        aiProvider,
+        apiKey: apiKey || '',
+        documents,
+        isEnabled,
+      };
+
+      console.log('[Content Script] getSettings():', {
+        aiProvider: settings.aiProvider,
+        hasApiKey: !!settings.apiKey,
+        apiKeyLength: settings.apiKey?.length || 0,
+        documentsCount: settings.documents.length,
+        isEnabled: settings.isEnabled
+      });
+
+      return settings;
+    } catch (error) {
+      console.error('[Content Script] getSettings() error:', error);
+      return {
+        aiProvider: 'claude',
+        apiKey: '',
+        documents: [],
+        isEnabled: true,
+      };
+    }
   }
 
   private async getAIResponses(provider: string, apiKey: string, prompt: string): Promise<string[]> {
