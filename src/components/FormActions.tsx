@@ -1,7 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { Button, Header, FixedFooter } from './ui';
 import { BrowserAPI } from '@/utils/browserApi';
 import { Toast } from '@/utils/toast';
+import { announceToScreenReader } from '@/utils/accessibility';
 
 interface FormActionsProps {
   isEnabled: boolean;
@@ -14,6 +15,13 @@ interface FormActionsProps {
 export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiKey }: FormActionsProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [contentScriptStatus, setContentScriptStatus] = useState<'unknown' | 'loaded' | 'failed'>('unknown');
+
+  // Announce loading state to screen readers when processing starts
+  useEffect(() => {
+    if (isProcessing) {
+      announceToScreenReader('Processing form fill request. Please wait.', 'assertive');
+    }
+  }, [isProcessing]);
 
   const handleAnalyzeAndFill = async () => {
     setIsProcessing(true);

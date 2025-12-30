@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { AISetup } from '@/components/AISetup';
 import { DocumentSelector } from '@/components/DocumentSelector';
 import { FormActions } from '@/components/FormActions';
@@ -18,6 +18,7 @@ export function App() {
     documents: [],
     isEnabled: true
   });
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     // Check if Chrome AI is available and set as default
@@ -87,6 +88,17 @@ export function App() {
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
+  }, [currentStep]);
+
+  // Focus management: move focus to first heading when step changes
+  useEffect(() => {
+    if (mainRef.current) {
+      const firstHeading = mainRef.current.querySelector('h2, h3') as HTMLElement;
+      if (firstHeading) {
+        firstHeading.setAttribute('tabindex', '-1');
+        firstHeading.focus();
+      }
+    }
   }, [currentStep]);
 
   const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
@@ -199,7 +211,7 @@ export function App() {
         <h1 className="sr-only">Prefiller - AI Form Auto-Fill Extension</h1>
 
         <div className="rainbow-border">
-          <main id="main-content" role="main" className="gemini-content">
+          <main id="main-content" role="main" ref={mainRef} className="gemini-content">
             <div className="step-container">
               {renderCurrentStep()}
             </div>

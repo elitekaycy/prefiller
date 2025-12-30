@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import { AIProvider } from '@/types';
 import { AIService } from '@/utils/aiService';
 import { ChromeAI } from '@/utils/chromeai';
@@ -29,6 +29,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
   const [isEditMode, setIsEditMode] = useState(false); // For existing key editing
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setInputValue(apiKey);
@@ -45,6 +46,13 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
       loadUsageStats();
     }
   }, [aiProvider, apiKey, isEditMode]);
+
+  // Focus error message when it appears
+  useEffect(() => {
+    if (connectionStatus === 'error' && errorRef.current) {
+      errorRef.current.focus();
+    }
+  }, [connectionStatus]);
 
   const loadUsageStats = async () => {
     setLoadingStats(true);
@@ -459,9 +467,11 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         {/* Status Messages */}
         {connectionStatus === 'error' && (
           <div
+            ref={errorRef}
             id="api-key-error"
             role="alert"
             aria-live="assertive"
+            tabIndex={-1}
             className="rounded-lg border p-3"
             style={{
               backgroundColor: 'rgba(242, 139, 130, 0.1)',
