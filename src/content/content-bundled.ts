@@ -393,63 +393,39 @@ class FormScraper {
   }
 
   /**
-   * Extract structured data from unstructured text
-   * Looks for patterns like "Name: John", "Email: test@example.com", etc.
+   * Intelligently truncate document to fit context window
+   * Prioritizes important information while staying within token limits
    */
-  private extractKeyInfo(text: string): string {
-    const lines = text.split('\n');
-    const relevantLines: string[] = [];
+  private optimizeDocumentForPrompt(text: string): string {
+    // Target: ~6000 chars (~1500 tokens) for personal info
+    // This leaves room for fields, instructions, and response
+    const MAX_CHARS = 6000;
 
-    // Common form field patterns to look for
-    const patterns = [
-      /^(name|full name|first name|last name|middle name)[\s:]+(.+)/i,
-      /^(email|e-mail|email address)[\s:]+(.+)/i,
-      /^(phone|telephone|mobile|cell)[\s:]+(.+)/i,
-      /^(address|street|city|state|zip|postal|country)[\s:]+(.+)/i,
-      /^(dob|date of birth|birthday|birth date)[\s:]+(.+)/i,
-      /^(ssn|social security|tax id|tin)[\s:]+(.+)/i,
-      /^(company|organization|employer)[\s:]+(.+)/i,
-      /^(title|position|job title|role)[\s:]+(.+)/i,
-      /^(education|degree|school|university|college)[\s:]+(.+)/i,
-      /^(experience|years of experience|work history)[\s:]+(.+)/i,
-      /^(skill|skills|expertise|competencies)[\s:]+(.+)/i,
-      /^(license|certification|certificate)[\s:]+(.+)/i,
-    ];
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.length < 3) continue;
-
-      // Check if line matches any important pattern
-      let isRelevant = false;
-      for (const pattern of patterns) {
-        if (pattern.test(trimmed)) {
-          isRelevant = true;
-          break;
-        }
-      }
-
-      // Also include lines that look like key-value pairs
-      if (!isRelevant && /^[A-Za-z\s]+[:;-]\s*.{2,}/.test(trimmed)) {
-        isRelevant = true;
-      }
-
-      if (isRelevant) {
-        relevantLines.push(trimmed);
-      }
+    if (text.length <= MAX_CHARS) {
+      return text;
     }
 
-    // If we extracted very little, include more context (first 5000 chars)
-    if (relevantLines.length < 5) {
-      return text.substring(0, 5000) + (text.length > 5000 ? '\n...[truncated]' : '');
-    }
+    // Strategy: Take beginning (most important), middle sample, and end
+    // This captures: header info, middle content, and conclusion
+    const beginChars = Math.floor(MAX_CHARS * 0.6); // 60% from beginning
+    const middleChars = Math.floor(MAX_CHARS * 0.2); // 20% from middle
+    const endChars = Math.floor(MAX_CHARS * 0.2);   // 20% from end
 
-    return relevantLines.join('\n');
+    const beginning = text.substring(0, beginChars);
+    const middleStart = Math.floor((text.length - middleChars) / 2);
+    const middle = text.substring(middleStart, middleStart + middleChars);
+    const end = text.substring(text.length - endChars);
+
+    return `${beginning}\n\n[...document middle...]\n\n${middle}\n\n[...document end...]\n\n${end}`;
   }
 
   buildAIPrompt(fields: FieldMetadata[], personalInfo: string): string {
-    // Extract only relevant information from documents
-    const optimizedInfo = this.extractKeyInfo(personalInfo);
+    // Optimize document to fit within context window
+    const optimizedInfo = this.optimizeDocumentForPrompt(personalInfo);
+
+    console.log('[Prompt Builder] Original info length:', personalInfo.length);
+    console.log('[Prompt Builder] Optimized info length:', optimizedInfo.length);
+    console.log('[Prompt Builder] Optimized info preview:', optimizedInfo.substring(0, 500));
 
     let prompt = `You are a form-filling assistant. Fill out the form fields based on the personal information provided.\n\n`;
 
@@ -476,16 +452,18 @@ class FormScraper {
     });
 
     prompt += `\n=== INSTRUCTIONS ===\n`;
+    prompt += `IMPORTANT: Read the PERSONAL INFORMATION section above and extract actual data values to fill the form fields.\n`;
+    prompt += `DO NOT just echo the field name - provide the ACTUAL VALUE from the personal information.\n\n`;
     prompt += `Provide responses for each field in this exact format:\n`;
-    prompt += `1. [Response for field 1]\n`;
-    prompt += `2. [Response for field 2]\n`;
+    prompt += `1. [Actual value from personal info]\n`;
+    prompt += `2. [Actual value from personal info]\n`;
     prompt += `etc.\n\n`;
     prompt += `Rules:\n`;
-    prompt += `- Use the personal information to provide accurate responses\n`;
-    prompt += `- For select fields, choose from the provided options\n`;
-    prompt += `- For dates/numbers, use the Format or Pattern specified for that field. If no format specified, default to: dates as MM/DD/YYYY, phones as (123) 456-7890\n`;
+    prompt += `- Extract and use ACTUAL DATA from the personal information section above (e.g., if name is "Dickson", write "Dickson", not "First Name")\n`;
+    prompt += `- For select fields, choose the most appropriate option from the provided list\n`;
+    prompt += `- For dates/numbers, use the Format or Pattern specified. If no format specified, default to: dates as MM/DD/YYYY, phones as (123) 456-7890\n`;
     prompt += `- Respect maxLength and pattern constraints\n`;
-    prompt += `- If you don't have enough information, respond with "[SKIP]"\n`;
+    prompt += `- If you cannot find relevant information in the personal data, respond with "[SKIP]"\n`;
     prompt += `- Keep responses concise and appropriate for the field type\n`;
 
     return prompt;
