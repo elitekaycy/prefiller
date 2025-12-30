@@ -746,13 +746,13 @@ class FormAnalyzer {
   private async fillForms() {
     const settings = await this.getSettings();
 
-    // Debug: Show what we got with alert (impossible to miss)
-    alert(`DEBUG INFO:
-Provider: ${settings.aiProvider}
-Has API Key: ${!!settings.apiKey}
-Key Length: ${settings.apiKey?.length || 0}
-Documents: ${settings.documents.length}
-Is Enabled: ${settings.isEnabled}`);
+    console.log('[Content Script] fillForms called:', {
+      provider: settings.aiProvider,
+      hasApiKey: !!settings.apiKey,
+      keyLength: settings.apiKey?.length || 0,
+      documentsCount: settings.documents.length,
+      isEnabled: settings.isEnabled
+    });
 
     if (!settings.aiProvider) {
       this.showNotification('Please configure your AI provider first!', 'error');
