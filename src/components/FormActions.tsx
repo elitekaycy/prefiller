@@ -65,18 +65,26 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
       setContentScriptStatus('loaded');
 
       // Listen for completion message from content script
+      let isListening = true;
       const messageListener = (message: any) => {
-        if (message.type === 'PREFILLER_PROCESSING_COMPLETE') {
+        if (isListening && message.type === 'PREFILLER_PROCESSING_COMPLETE') {
+          isListening = false;
           setIsProcessing(false);
-          BrowserAPI.runtime.onMessage.removeListener(messageListener);
+          // Use chrome directly for removeListener
+          chrome.runtime.onMessage.removeListener(messageListener);
         }
       };
-      BrowserAPI.runtime.onMessage.addListener(messageListener);
+
+      // Use chrome directly for addListener
+      chrome.runtime.onMessage.addListener(messageListener);
 
       // Auto-stop loading after 60 seconds (timeout)
-      setTimeout(() => {
-        setIsProcessing(false);
-        BrowserAPI.runtime.onMessage.removeListener(messageListener);
+      const timeoutId = setTimeout(() => {
+        if (isListening) {
+          isListening = false;
+          setIsProcessing(false);
+          chrome.runtime.onMessage.removeListener(messageListener);
+        }
       }, 60000);
 
       // Use executeScript to run in all frames (main + iframes)
