@@ -104,3 +104,9 @@ test-*.js
 
 # OS files
 Thumbs.db
+
+# Project specific
+production-ticket.md
+production-ticket*.md
+test-storage.html
+test-*.html

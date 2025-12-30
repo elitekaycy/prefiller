@@ -1,137 +1,291 @@
-# Prefiller - AI-Powered Form Filling Extension
+<div align="center">
 
-An intelligent Chrome extension that uses AI (Anthropic Claude or Google Gemini) to automatically fill forms based on your personal documents and context.
+# 🚀 Prefiller
 
-## Features
+### AI-Powered Form Filling Chrome Extension
 
-- 🤖 **AI-Powered Form Filling**: Uses Anthropic Claude or Google Gemini API to generate contextually appropriate responses
-- 🧠 **Multiple AI Providers**: Choose between Claude (default) and Gemini based on your preference
-- 📄 **Document Upload**: Upload personal documents (TXT, PDF, DOC, DOCX) to provide context
-- 🔍 **Smart Form Detection**: Automatically detects and analyzes form fields on any webpage
-- ✨ **Intelligent Responses**: Generates professional, relevant responses based on your documents
-- 🎨 **Modern UI**: Built with Preact and Tailwind CSS for a clean, responsive interface
-- 🔒 **Privacy-Focused**: Your documents and API key are stored locally in your browser
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://github.com/elitekaycy/prefiller)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Preact](https://img.shields.io/badge/Preact-673AB8?logo=preact&logoColor=white)](https://preactjs.com/)
 
-## Setup
+**Automatically fill web forms with AI-powered intelligence using your personal documents**
+
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-contributing) • [License](#-license)
+
+</div>
+
+---
+
+## 📖 About
+
+Prefiller is an intelligent Chrome extension that leverages AI to automatically fill web forms based on your personal documents and context. Upload your CV, cover letter, or any relevant documents, and let AI understand your background to fill forms accurately and contextually.
+
+Perfect for job applications, surveys, registration forms, and any repetitive form-filling tasks!
+
+## ✨ Features
+
+### 🤖 **AI-Powered Intelligence**
+- **Multiple AI Providers**: Choose from Groq (recommended & FREE), Google Gemini, Anthropic Claude, or Chrome AI
+- **Context-Aware Responses**: Generates personalized, professional responses based on your documents
+- **Smart Field Detection**: Automatically identifies and categorizes form fields
+- **Multi-Line Response Support**: Handles complex, multi-paragraph responses seamlessly
+
+### 📄 **Document Management**
+- **Multi-Format Support**: Upload TXT, PDF, DOC, DOCX files
+- **Intelligent Parsing**: Extracts and analyzes text from your documents
+- **Local Storage**: Your documents stay private and secure in your browser
+
+### 🎨 **User Experience**
+- **Modern, Clean UI**: Built with Preact and Tailwind CSS
+- **Real-Time Feedback**: Toast notifications with status updates
+- **Easy Configuration**: Simple setup wizard for AI providers and documents
+- **Developer Mode**: Comprehensive logging for debugging
+
+### 🔒 **Privacy & Security**
+- **Local-First**: All data stored locally in Chrome storage
+- **Encrypted API Keys**: Secure storage of your API credentials
+- **No External Servers**: Direct communication with AI providers only
+- **Open Source**: Full transparency and community-driven development
+
+## 🚀 Installation
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
-- Chrome browser
-- AI API key:
-  - **Claude API key** ([Get one here](https://console.anthropic.com/account/keys)) - Recommended
-  - **Gemini API key** ([Get one here](https://makersuite.google.com/app/apikey)) - Alternative
+- **Node.js** v16 or higher ([Download](https://nodejs.org/))
+- **Chrome Browser** ([Download](https://www.google.com/chrome/))
+- **AI API Key** (choose one):
+  - [Groq API Key](https://console.groq.com/keys) - **FREE & Recommended** ⭐
+  - [Google Gemini API Key](https://aistudio.google.com/app/apikey) - FREE tier available
+  - [Anthropic Claude API Key](https://console.anthropic.com/account/keys) - Paid
+  - Chrome AI (Built-in) - Experimental, requires Chrome flags
 
-### Installation
+### Build from Source
 
-1. **Clone and install dependencies:**
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/elitekaycy/prefiller.git
+   cd prefiller
+   ```
+
+2. **Install dependencies**
    ```bash
    npm install
    ```
 
-2. **Build the extension:**
+3. **Build the extension**
    ```bash
    npm run build
    ```
 
-3. **Load in Chrome:**
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked" and select the `dist` folder
+4. **Load in Chrome**
+   - Open Chrome and navigate to `chrome://extensions/`
+   - Enable **Developer mode** (top right toggle)
+   - Click **Load unpacked**
+   - Select the `dist` folder from the project directory
 
-### Configuration
+## 📘 Usage
 
-1. **Choose AI Provider & Set up API Key:**
-   - Click the Prefiller extension icon in your toolbar
-   - Choose between Anthropic Claude (recommended) or Google Gemini
-   - Enter your API key for the selected provider
-   - Click "Verify & Connect"
+### Initial Setup
 
-2. **Upload Documents:**
-   - In the extension popup, drag and drop your personal documents
-   - Supported formats: TXT, PDF, DOC, DOCX
-   - These documents provide context for form filling
+1. **Click the Prefiller icon** in your Chrome toolbar
+2. **Choose your AI provider**:
+   - **Groq** (Recommended) - Fast, free, and powerful
+   - **Google Gemini** - Reliable with free tier
+   - **Anthropic Claude** - Advanced reasoning (testing mode)
+   - **Chrome AI** - Local, experimental
 
-## Usage
+3. **Configure API Key** (skip for Chrome AI):
+   - Enter your API key
+   - Click **Verify & Connect**
+   - Wait for successful connection confirmation
 
-1. **Navigate to a webpage with forms**
-2. **Click the extension icon** or let it auto-analyze the page
-3. **Click "Analyze Page"** to detect form fields
-4. **Click "Fill Forms"** to automatically fill detected fields with AI-generated responses
+4. **Upload your documents**:
+   - Drag and drop or click to upload
+   - Supported formats: PDF, TXT, DOC, DOCX
+   - Upload CV, cover letters, portfolios, etc.
 
-### Manual Form Filling
+### Filling Forms
 
-- Click "Analyze Page" to highlight detected form fields
-- Click "Fill Forms" to populate them with personalized content
-- Review and modify the filled content as needed
+1. **Navigate to any webpage with forms** (job applications, surveys, etc.)
+2. **Click the Prefiller extension icon**
+3. **Click "Analyze & Fill Forms"**
+4. **Review and edit** the AI-filled content as needed
+5. **Submit your form** with confidence!
 
-## Development
+### Tips for Best Results
+
+- **Upload comprehensive documents**: Include detailed CVs, cover letters, and portfolios
+- **Use Groq for speed**: Best balance of speed, accuracy, and free usage
+- **Review AI responses**: Always verify AI-generated content before submission
+- **Keep documents updated**: Refresh your uploaded documents regularly
+
+## 🛠️ Development
 
 ### Project Structure
 
 ```
-src/
-├── popup/          # Extension popup UI
-├── content/        # Content script for form detection
-├── background/     # Background service worker
-├── components/     # Reusable UI components
-├── types/          # TypeScript type definitions
-└── utils/          # Utility functions
+prefiller/
+├── src/
+│   ├── popup/              # Extension popup UI (Preact)
+│   ├── content/            # Content scripts for form detection
+│   │   ├── content-bundled.ts   # Main form filling logic
+│   │   └── scraper.ts           # Form field scraper
+│   ├── background/         # Service worker
+│   ├── components/         # Reusable UI components
+│   ├── utils/              # Utility functions
+│   │   ├── aiService.ts         # AI provider abstraction
+│   │   ├── gemini.ts            # Gemini API client
+│   │   ├── groq.ts              # Groq API client
+│   │   └── documentParser.ts   # Document parsing
+│   ├── storage/            # Chrome storage management
+│   ├── types/              # TypeScript type definitions
+│   └── config/             # Configuration and constants
+├── public/                 # Static assets
+├── dist/                   # Build output (generated)
+└── manifest.json           # Chrome extension manifest
 ```
 
-### Build Commands
+### Available Scripts
 
-- `npm run dev` - Development mode with hot reload
-- `npm run build` - Production build
-- `npm run preview` - Preview the built extension
+```bash
+# Development mode with hot reload
+npm run dev
 
-### Technologies Used
+# Production build
+npm run build
 
-- **Preact** - Lightweight React alternative for UI
-- **TypeScript** - Type safety and better development experience
-- **Vite** - Fast build tool and development server
-- **Tailwind CSS** - Utility-first CSS framework
-- **Chrome Extensions API** - Browser integration
-- **Anthropic Claude API** - Advanced AI for form filling (default)
-- **Google Gemini API** - Alternative AI provider
+# Preview built extension
+npm run preview
 
-## Privacy & Security
+# Type checking
+npm run type-check
 
-- API keys are stored locally in Chrome's sync storage
-- Documents are processed locally and sent only to your chosen AI provider (Claude or Gemini)
-- No data is stored on external servers
-- Follows Chrome extension security best practices
+# Linting
+npm run lint
+```
 
-## Troubleshooting
+### Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **Preact** | Lightweight React alternative for UI |
+| **TypeScript** | Type safety and better DX |
+| **Vite** | Fast build tool and dev server |
+| **Tailwind CSS** | Utility-first styling |
+| **Chrome Extensions API** | Browser integration |
+| **AI APIs** | Groq, Gemini, Claude for intelligence |
+
+## 🤝 Contributing
+
+Contributions are welcome and appreciated! Here's how you can help:
+
+### Ways to Contribute
+
+- 🐛 **Report bugs** by opening an issue
+- 💡 **Suggest features** or enhancements
+- 📝 **Improve documentation**
+- 🔧 **Submit pull requests** with fixes or features
+- ⭐ **Star the repository** to show support
+
+### Development Workflow
+
+1. **Fork the repository**
+2. **Create a feature branch**
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. **Make your changes** and commit
+   ```bash
+   git commit -m "feat: add amazing feature"
+   ```
+4. **Push to your fork**
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+5. **Open a Pull Request** with a clear description
+
+### Commit Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `docs:` - Documentation changes
+- `style:` - Code style changes (formatting, etc.)
+- `refactor:` - Code refactoring
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks
+
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **"No forms detected"**
-   - Make sure the page has visible input fields
-   - Try refreshing the page and analyzing again
+<details>
+<summary><b>❌ "No forms detected on this page"</b></summary>
 
-2. **"API key error"**
-   - Verify your API key is correct for the selected provider
-   - Check that your API key has proper permissions
-   - For Claude: Ensure you have credits available
-   - For Gemini: Check API quota and billing
+- Ensure the page has visible input fields
+- Refresh the page and try again
+- Check if fields are inside iframes (not currently supported)
+</details>
 
-3. **Forms not filling**
-   - Ensure you have uploaded relevant documents
-   - Check that the extension is enabled
-   - Try analyzing the page first
+<details>
+<summary><b>❌ "API key validation failed"</b></summary>
+
+- Verify your API key is correct for the selected provider
+- Check API key format:
+  - Groq: starts with `gsk_`
+  - Gemini: starts with `AIzaSy`
+  - Claude: starts with `sk-ant-`
+- Ensure you have API credits/quota available
+</details>
+
+<details>
+<summary><b>❌ "Gemini fails to connect"</b></summary>
+
+- The extension uses Gemini 2.5 Flash (latest model)
+- Ensure your API key is active and has quota
+- Check Google AI Studio for any service disruptions
+</details>
+
+<details>
+<summary><b>❌ Forms are partially filled</b></summary>
+
+- Upload more comprehensive documents
+- Try using Groq for better accuracy
+- Review the form field labels - AI needs clear context
+</details>
 
 ### Getting Help
 
-If you encounter issues:
-1. Check the browser console for error messages
-2. Verify your API key and documents are properly configured
-3. Try disabling and re-enabling the extension
+- **Check Console**: Open DevTools → Console for error messages
+- **Open an Issue**: [GitHub Issues](https://github.com/elitekaycy/prefiller/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/elitekaycy/prefiller/discussions)
 
-## License
+## 📄 License
 
-MIT License - see LICENSE file for details
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-## Contributing
+## 🙏 Acknowledgments
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- [Anthropic](https://www.anthropic.com/) for Claude API
+- [Google](https://ai.google.dev/) for Gemini API
+- [Groq](https://groq.com/) for lightning-fast inference
+- [Chrome Extensions](https://developer.chrome.com/docs/extensions/) documentation
+- All contributors and supporters of this project
+
+## 📬 Contact & Support
+
+- **Author**: [@elitekaycy](https://github.com/elitekaycy)
+- **Repository**: [github.com/elitekaycy/prefiller](https://github.com/elitekaycy/prefiller)
+- **Issues**: [Report a bug or request a feature](https://github.com/elitekaycy/prefiller/issues)
+
+---
+
+<div align="center">
+
+**Made with ❤️ by the open-source community**
+
+⭐ **Star this repo** if you find it helpful!
+
+</div>
