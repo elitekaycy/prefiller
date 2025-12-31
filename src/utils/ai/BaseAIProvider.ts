@@ -5,7 +5,7 @@
 
 import { IAIProvider, ProviderConfig } from './IAIProvider';
 import { PromptBuilder } from './PromptBuilder';
-import { FieldMetadata } from '@/types';
+import { FieldMetadata, AIFormResponse } from '@/types';
 import { AI_CONFIG } from '@/config/constants';
 import { withRetry, RetryConfig, DEFAULT_RETRY_CONFIG } from '../retry';
 import { Toast } from '../toast';
@@ -51,11 +51,11 @@ export abstract class BaseAIProvider implements IAIProvider {
    * Generate form responses using shared prompt building logic
    * This method is shared across all providers with automatic retry
    */
-  async generateFormResponses(context: string, fields: FieldMetadata[]): Promise<string[]> {
+  async generateFormResponses(context: string, fields: FieldMetadata[]): Promise<AIFormResponse> {
     return this.executeWithRetry(async () => {
-      const prompt = PromptBuilder.buildFormPrompt(context, fields);
+      const prompt = PromptBuilder.buildStructuredFormPrompt(context, fields);
       const response = await this.generateContent(prompt);
-      return PromptBuilder.parseFormResponse(response, fields.length);
+      return PromptBuilder.parseStructuredFormResponse(response, fields.length);
     });
   }
 

@@ -32,6 +32,7 @@ export function App() {
         const aiProvider = await StorageManager.getAIProvider() || defaultProvider;
         const isEnabled = await StorageManager.getIsEnabled();
         const documents = await StorageManager.getDocuments();
+        const urlContexts = await StorageManager.getUrlContexts();
 
         // Load API key for current provider (already decrypted by StorageManager)
         const apiKey = await StorageManager.getApiKey(aiProvider);
@@ -41,6 +42,7 @@ export function App() {
           apiKey: apiKey || '',
           documents,
           isEnabled,
+          urlContexts,
         };
 
         setSettings(loadedSettings);
@@ -65,7 +67,8 @@ export function App() {
           aiProvider: defaultProvider,
           apiKey: '',
           documents: [],
-          isEnabled: true
+          isEnabled: true,
+          urlContexts: []
         });
       }
     };
@@ -103,30 +106,44 @@ export function App() {
 
   const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
     console.log('[App] updateSettings called:', { newSettings, currentSettings: settings });
-    const updated = { ...settings, ...newSettings };
-    setSettings(updated);
 
     try {
-      // Save AI provider if changed
-      if (newSettings.aiProvider !== undefined) {
-        console.log('[App] Saving provider:', newSettings.aiProvider);
+      // Handle provider change first
+      if (newSettings.aiProvider !== undefined && newSettings.aiProvider !== settings.aiProvider) {
+        console.log('[App] Provider changed from', settings.aiProvider, 'to', newSettings.aiProvider);
+
+        // Save new provider
         await StorageManager.setAIProvider(newSettings.aiProvider);
 
-        // If provider changed, load that provider's API key (already decrypted)
-        if (newSettings.aiProvider !== settings.aiProvider) {
-          const providerKey = await StorageManager.getApiKey(newSettings.aiProvider);
-          updated.apiKey = providerKey || '';
-          setSettings(updated);
-        }
+        // Load the API key for the new provider
+        const providerKey = await StorageManager.getApiKey(newSettings.aiProvider);
+        console.log('[App] Loaded API key for new provider:', { provider: newSettings.aiProvider, hasKey: !!providerKey });
+
+        // Update state with new provider AND its corresponding API key
+        const updated = {
+          ...settings,
+          aiProvider: newSettings.aiProvider,
+          apiKey: providerKey || ''
+        };
+        setSettings(updated);
+        return; // Return early to avoid double state update
       }
 
-      // Save API key if changed (StorageManager will encrypt it)
+      // Handle API key change (only if provider didn't change)
       if (newSettings.apiKey !== undefined) {
-        // IMPORTANT: Use updated.aiProvider which has the latest provider
-        console.log('[App] Saving API key:', { provider: updated.aiProvider, keyLength: newSettings.apiKey?.length });
-        await StorageManager.setApiKey(updated.aiProvider, newSettings.apiKey);
+        console.log('[App] Saving API key:', { provider: settings.aiProvider, keyLength: newSettings.apiKey?.length });
+        await StorageManager.setApiKey(settings.aiProvider, newSettings.apiKey);
         console.log('[App] API key saved successfully');
+
+        // Update state with new API key
+        const updated = { ...settings, apiKey: newSettings.apiKey };
+        setSettings(updated);
+        return;
       }
+
+      // Handle other settings changes
+      const updated = { ...settings, ...newSettings };
+      setSettings(updated);
 
       // Save documents if changed
       if (newSettings.documents !== undefined) {
@@ -145,6 +162,11 @@ export function App() {
       // Save enabled state if changed
       if (newSettings.isEnabled !== undefined) {
         await StorageManager.setIsEnabled(newSettings.isEnabled);
+      }
+
+      // Save URL contexts if changed
+      if (newSettings.urlContexts !== undefined) {
+        await StorageManager.setUrlContexts(newSettings.urlContexts);
       }
     } catch (error) {
       Toast.error(`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -179,6 +201,8 @@ export function App() {
           <DocumentSelector
             documents={settings.documents}
             onDocumentsChange={(documents) => updateSettings({ documents })}
+            urlContexts={settings.urlContexts}
+            onUrlContextsChange={(urlContexts) => updateSettings({ urlContexts })}
             onContinue={() => handleStepComplete('documents')}
             onBack={() => setCurrentStep('setup')}
           />

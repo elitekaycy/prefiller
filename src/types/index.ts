@@ -9,6 +9,8 @@ export interface ExtensionSettings {
   apiKey: string;
   documents: UploadedDocument[];
   isEnabled: boolean;
+  urlContexts?: URLContext[];
+  linkScrapingConfig?: LinkScrapingConfig;
 }
 
 export interface Education {
@@ -83,6 +85,88 @@ export interface ParsedDocumentData {
 
   // Form-Specific Fields
   customFields?: Record<string, string>; // For flexible field mapping
+}
+
+/**
+ * URL context provided by user for additional information
+ */
+export interface URLContext {
+  id: string;
+  url: string;
+  title?: string;
+  description?: string;
+  content: string;
+  addedAt: number;
+  scrapedAt?: number;
+  scraper: 'manual' | 'auto';
+  metadata: {
+    success: boolean;
+    error?: string;
+    wordCount: number;
+  };
+}
+
+/**
+ * Link scraping configuration
+ */
+export interface LinkScrapingConfig {
+  enabled: boolean;
+  timeout: number;
+  maxContentLength: number;
+  cacheEnabled: boolean;
+  cacheTTL: number;
+}
+
+/**
+ * Field metadata for form analysis
+ */
+export interface FieldMetadata {
+  element: HTMLElement;
+  type: string;
+  label: string;
+  placeholder: string;
+  name: string;
+  id: string;
+  required: boolean;
+  description: string;
+  context: string;
+  options?: string[];
+  pattern?: string;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+}
+
+/**
+ * AI field response with metadata
+ */
+export interface AIFieldResponse {
+  fieldIndex: number;
+  value: string;
+  confidence: number;
+  reasoning: string;
+  source: string;
+  needsReview: boolean;
+  alternatives?: string[];
+}
+
+/**
+ * Complete AI form response
+ */
+export interface AIFormResponse {
+  fields: AIFieldResponse[];
+  overallConfidence: number;
+  documentsSummary: string;
+}
+
+/**
+ * Field validation result
+ */
+export interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  correctedValue?: string;
 }
 
 export interface UploadedDocument {

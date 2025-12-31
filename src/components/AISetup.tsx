@@ -93,13 +93,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
     setShowSkipOption(false);
     setIsEditMode(false);
 
-    // Load saved API key for this provider (already decrypted)
-    try {
-      const savedKey = await StorageManager.getApiKey(provider);
-      setInputValue(savedKey || '');
-    } catch (error) {
-      setInputValue('');
-    }
+    // Note: The parent component (App.tsx) will load the API key for the new provider
+    // and update the apiKey prop, which will trigger the useEffect below to update inputValue
   };
 
   // Keyboard navigation for provider selection (roving tabindex pattern)

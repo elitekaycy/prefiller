@@ -1,18 +1,28 @@
 import { useState } from 'preact/hooks';
-import { UploadedDocument } from '@/types';
+import { UploadedDocument, ExtensionSettings, URLContext } from '@/types';
 import { DocumentParserFactory } from '@/utils/parsers/ParserFactory';
 import { CacheManager } from '@/storage';
 import { Header, Button, LoadingSpinner, FixedFooter } from './ui';
 import { DocumentUpload } from './DocumentUpload';
+import { URLInput } from './URLInput';
 
 interface DocumentSelectorProps {
   documents: UploadedDocument[];
   onDocumentsChange: (documents: UploadedDocument[]) => void;
+  urlContexts?: URLContext[];
+  onUrlContextsChange?: (urlContexts: URLContext[]) => void;
   onContinue: () => void;
   onBack: () => void;
 }
 
-export function DocumentSelector({ documents, onDocumentsChange, onContinue, onBack }: DocumentSelectorProps) {
+export function DocumentSelector({
+  documents,
+  onDocumentsChange,
+  urlContexts = [],
+  onUrlContextsChange,
+  onContinue,
+  onBack
+}: DocumentSelectorProps) {
   return (
     <div className="flex flex-col h-full">
       <Header title="Upload Documents" onBack={onBack} />
@@ -23,6 +33,14 @@ export function DocumentSelector({ documents, onDocumentsChange, onContinue, onB
           documents={documents}
           onDocumentsChange={onDocumentsChange}
         />
+
+        {/* URL Input Component */}
+        {onUrlContextsChange && (
+          <URLInput
+            urlContexts={urlContexts}
+            onUrlContextsChange={onUrlContextsChange}
+          />
+        )}
 
         {/* Info Box */}
         <div

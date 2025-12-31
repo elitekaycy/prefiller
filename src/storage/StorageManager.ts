@@ -3,7 +3,7 @@
  * High-level API for storage operations
  */
 
-import { AIProvider, UploadedDocument } from '@/types';
+import { AIProvider, UploadedDocument, URLContext } from '@/types';
 import { IStorageProvider } from './IStorageProvider';
 import { BrowserStorageProvider } from './BrowserStorageProvider';
 import { StorageKey, QuotaInfo, DocumentMetadata } from './StorageSchema';
@@ -171,6 +171,40 @@ export class StorageManager {
    */
   static async getDocumentsMetadata(): Promise<DocumentMetadata[]> {
     return (await this.provider.get('documents.metadata')) || [];
+  }
+
+  // ========== URL Contexts ==========
+
+  /**
+   * Get all URL contexts
+   */
+  static async getUrlContexts(): Promise<URLContext[]> {
+    return (await this.provider.get('urlContexts.list')) || [];
+  }
+
+  /**
+   * Set URL contexts
+   */
+  static async setUrlContexts(urlContexts: URLContext[]): Promise<void> {
+    await this.provider.set('urlContexts.list', urlContexts);
+  }
+
+  /**
+   * Add a URL context
+   */
+  static async addUrlContext(urlContext: URLContext): Promise<void> {
+    const contexts = await this.getUrlContexts();
+    contexts.push(urlContext);
+    await this.setUrlContexts(contexts);
+  }
+
+  /**
+   * Remove a URL context
+   */
+  static async removeUrlContext(id: string): Promise<void> {
+    const contexts = await this.getUrlContexts();
+    const filtered = contexts.filter(ctx => ctx.id !== id);
+    await this.setUrlContexts(filtered);
   }
 
   // ========== Settings ==========

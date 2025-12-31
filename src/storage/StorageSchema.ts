@@ -3,7 +3,7 @@
  * Defines the structure and types for all storage keys
  */
 
-import { AIProvider, UploadedDocument, ParsedDocumentData } from '@/types';
+import { AIProvider, UploadedDocument, ParsedDocumentData, URLContext } from '@/types';
 
 /**
  * Document Metadata
@@ -100,6 +100,9 @@ export interface StorageSchema {
   // Documents
   'documents.list': UploadedDocument[];
   'documents.metadata': DocumentMetadata[];
+
+  // URL Contexts
+  'urlContexts.list': URLContext[];
 
   // Parsed Document Cache (dynamic keys)
   [key: `cache.parsed.${string}`]: ParsedDocumentData;

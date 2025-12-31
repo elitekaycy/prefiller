@@ -1,4 +1,4 @@
-import { FormField, ProviderError, ExtensionSettings, UploadedDocument } from '@/types';
+import { FormField, ProviderError, ExtensionSettings, UploadedDocument, URLContext, AIFormResponse } from '@/types';
 import { FormScraper, FieldMetadata } from './scraper';
 import { AIService } from '@/utils/aiService';
 import { TIMEOUTS, COLORS } from '@/config/constants';
@@ -9,16 +9,20 @@ class FormAnalyzer {
   private scrapedFields: FieldMetadata[] = [];
   private scraper: FormScraper;
   private isTopFrame: boolean;
+  private formUrls: URLContext[] = [];
 
   constructor() {
     this.scraper = new FormScraper();
     this.isTopFrame = window.self === window.top;
 
+    this.injectTooltipStyles();
     this.init();
 
     // Listen for postMessage from executeScript (works across all frames)
     window.addEventListener('message', (event) => {
       if (event.data && event.data.type === 'PREFILLER_FILL_FORMS') {
+        // Store form-specific URLs if provided
+        this.formUrls = event.data.formUrls || [];
         // Re-scan and fill
         this.analyzeFormsAsync().then(() => {
           this.fillForms();
@@ -28,6 +32,26 @@ class FormAnalyzer {
 
     // Auto-analyze forms on load
     this.analyzeFormsAsync();
+  }
+
+  /**
+   * Inject CSS styles for confidence tooltips
+   */
+  private injectTooltipStyles() {
+    const styleId = 'prefiller-tooltip-styles';
+    if (document.getElementById(styleId)) {
+      return; // Already injected
+    }
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .prefiller-has-tooltip:hover {
+        border-color: var(--prefiller-tooltip-color) !important;
+        box-shadow: 0 0 0 2px var(--prefiller-tooltip-color) !important;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   private init() {
@@ -293,8 +317,27 @@ Is Enabled: ${settings.isEnabled}`);
         personalInfo += `\n${doc.name}:\n${doc.content}\n`;
       });
 
-      // Build AI prompt using scraper engine
-      const prompt = this.scraper.buildAIPrompt(this.scrapedFields, personalInfo);
+      // Add URL contexts if available
+      if (settings.urlContexts && settings.urlContexts.length > 0) {
+        personalInfo += '\n--- Additional Context from URLs ---\n';
+        settings.urlContexts.forEach((ctx: URLContext) => {
+          if (ctx.metadata.success && ctx.content) {
+            personalInfo += `\nFrom ${ctx.title || ctx.url}:\n`;
+            personalInfo += `${ctx.content}\n`;
+          }
+        });
+      }
+
+      // Add form-specific URL contexts if provided
+      if (this.formUrls && this.formUrls.length > 0) {
+        personalInfo += '\n--- Form-Specific Context from URLs ---\n';
+        this.formUrls.forEach((ctx: URLContext) => {
+          if (ctx.metadata.success && ctx.content) {
+            personalInfo += `\nFrom ${ctx.title || ctx.url}:\n`;
+            personalInfo += `${ctx.content}\n`;
+          }
+        });
+      }
 
       const providerName = AIService.getProviderName(settings.aiProvider);
       this.showNotification(`🤖 Generating responses with ${providerName}...`, 'loading');
@@ -302,21 +345,34 @@ Is Enabled: ${settings.isEnabled}`);
       // Use the unified AI service
       const aiService = new AIService(settings.aiProvider, decodedApiKey);
 
-      const responses = await this.getAIResponses(aiService, prompt);
+      // Get AI responses with confidence scores
+      const aiResponse: AIFormResponse = await aiService.generateFormResponses(
+        personalInfo,
+        this.scrapedFields
+      );
 
       this.showNotification('✨ Filling form fields...', 'loading');
 
-      // Use scraper engine to fill fields intelligently
-      const filledCount = this.scraper.fillFields(this.scrapedFields, responses);
+      // Use scraper engine to fill fields with validation
+      this.scraper.fillFields(this.scrapedFields, aiResponse);
 
       // Add visual indicators
       this.scrapedFields.forEach((field, index) => {
-        if (index < responses.length && responses[index] && responses[index] !== '[SKIP]') {
+        const fieldResponse = aiResponse.fields[index];
+        if (fieldResponse && fieldResponse.value && fieldResponse.value !== '[SKIP]') {
           field.element.classList.add('prefiller-filled');
         }
       });
 
-      this.showNotification(`✅ Successfully filled ${filledCount} out of ${this.scrapedFields.length} fields!`, 'success');
+      // Show completion message with confidence
+      const avgConfidence = aiResponse.overallConfidence;
+      const confidenceText = avgConfidence >= 90 ? 'high' :
+                             avgConfidence >= 70 ? 'medium' : 'low';
+
+      this.showNotification(
+        `✅ Successfully filled fields with ${confidenceText} confidence (${avgConfidence}%)!`,
+        'success'
+      );
     } catch (error) {
       let errorMessage = 'Unknown error occurred';
 

@@ -3,7 +3,7 @@
  * All AI providers must implement this interface to ensure consistency
  */
 
-import { FieldMetadata } from '@/types';
+import { FieldMetadata, AIFormResponse } from '@/types';
 
 export interface IAIProvider {
   /**
@@ -14,7 +14,7 @@ export interface IAIProvider {
   /**
    * Generate form responses based on context and field metadata
    */
-  generateFormResponses(context: string, fields: FieldMetadata[]): Promise<string[]>;
+  generateFormResponses(context: string, fields: FieldMetadata[]): Promise<AIFormResponse>;
 
   /**
    * Test the connection to the AI provider

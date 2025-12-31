@@ -1,5 +1,5 @@
 import { IAIProvider } from './ai/IAIProvider';
-import { AIProvider } from '@/types';
+import { AIProvider, AIFormResponse } from '@/types';
 import { PROVIDER_NAMES, PROVIDER_DESCRIPTIONS, API_KEY_URLS } from '@/config/constants';
 
 export class AIService {
@@ -54,7 +54,7 @@ export class AIService {
     return this.provider.generateContent(prompt);
   }
 
-  async generateFormResponses(context: string, fields: Array<any>): Promise<string[]> {
+  async generateFormResponses(context: string, fields: Array<any>): Promise<AIFormResponse> {
     await this.ensureReady();
     return this.provider.generateFormResponses(context, fields);
   }

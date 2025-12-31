@@ -1,21 +1,5 @@
-import { FormField } from '@/types';
-
-export interface FieldMetadata {
-  element: HTMLElement;
-  type: string;
-  label: string;
-  placeholder: string;
-  name: string;
-  id: string;
-  required: boolean;
-  description: string;
-  context: string; // Surrounding text/context
-  options?: string[]; // For select/radio/checkbox
-  pattern?: string; // Input pattern if specified
-  maxLength?: number;
-  min?: number;
-  max?: number;
-}
+import { FormField, FieldMetadata, AIFormResponse, AIFieldResponse, ValidationResult } from '@/types';
+import { ValidationPipeline } from '@/utils/validationPipeline';
 
 export class FormScraper {
   private skipFilledFields: boolean = false; // Make this configurable
@@ -393,31 +377,47 @@ export class FormScraper {
   /**
    * Fill fields with AI responses
    */
-  fillFields(fields: FieldMetadata[], responses: string[]): number {
+  fillFields(fields: FieldMetadata[], aiResponse: AIFormResponse): number {
     let filledCount = 0;
     const frameInfo = window.self === window.top ? 'main page' : 'iframe';
 
-    console.log(`🔧 [${frameInfo}] fillFields called with ${fields.length} fields and ${responses.length} responses`);
+    console.log(`🔧 [${frameInfo}] fillFields called with ${fields.length} fields and ${aiResponse.fields.length} responses`);
 
     fields.forEach((field, index) => {
-      if (index >= responses.length) {
-        console.log(`⏭️ [${frameInfo}] Field ${index}: No response available (index >= responses.length)`);
+      const response = aiResponse.fields[index];
+
+      if (!response || !response.value || response.value === '[SKIP]') {
+        console.log(`⏭️ [${frameInfo}] Field ${index} (${field.label}): Skipping - no value or [SKIP]`);
         return;
       }
 
-      const response = responses[index];
-      if (!response || response === '[SKIP]' || response.trim().length === 0) {
-        console.log(`⏭️ [${frameInfo}] Field ${index} (${field.label}): Skipping - response is empty or [SKIP]`);
+      console.log(`📝 [${frameInfo}] Field ${index} (${field.label}): Attempting to fill with "${response.value}" (confidence: ${response.confidence}%)`);
+
+      // Validate before filling
+      const validation = ValidationPipeline.validate(
+        response.value,
+        field,
+        response
+      );
+
+      const valueToFill = validation.correctedValue || response.value;
+
+      // Skip if invalid and low confidence
+      if (!validation.isValid && response.confidence < 70) {
+        console.log(`⏭️ [${frameInfo}] Field ${index} (${field.label}): Skipping - invalid and low confidence`);
+        this.addTooltip(field.element, response, validation, 'error');
         return;
       }
 
-      console.log(`📝 [${frameInfo}] Field ${index} (${field.label}): Attempting to fill with "${response}"`);
-
+      // Fill the field
       try {
-        const success = this.fillField(field, response);
+        const success = this.fillField(field, valueToFill);
+
         if (success) {
           filledCount++;
           console.log(`✅ [${frameInfo}] Field ${index} (${field.label}): Successfully filled!`);
+          // Add confidence tooltip
+          this.addTooltip(field.element, response, validation, 'success');
         } else {
           console.log(`❌ [${frameInfo}] Field ${index} (${field.label}): Fill returned false`);
         }
@@ -428,6 +428,34 @@ export class FormScraper {
 
     console.log(`📊 [${frameInfo}] fillFields complete: ${filledCount}/${fields.length} fields filled`);
     return filledCount;
+  }
+
+  /**
+   * Add confidence tooltip (shows on hover)
+   */
+  private addTooltip(
+    element: HTMLElement,
+    response: AIFieldResponse,
+    validation: ValidationResult,
+    status: 'success' | 'error'
+  ): void {
+    const color = response.confidence >= 90 ? '#10b981' :
+                  response.confidence >= 70 ? '#f59e0b' : '#ef4444';
+
+    const tooltipText = `
+Confidence: ${response.confidence}%
+Reasoning: ${response.reasoning}
+Source: ${response.source}
+${validation.warnings.length > 0 ? '\nWarnings: ' + validation.warnings.join(', ') : ''}
+${validation.errors.length > 0 ? '\nErrors: ' + validation.errors.join(', ') : ''}
+    `.trim();
+
+    element.setAttribute('title', tooltipText);
+    element.setAttribute('data-prefiller-confidence', String(response.confidence));
+
+    // Subtle border color on hover
+    element.style.setProperty('--prefiller-tooltip-color', color);
+    element.classList.add('prefiller-has-tooltip');
   }
 
   /**

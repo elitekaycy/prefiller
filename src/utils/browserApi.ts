@@ -253,6 +253,27 @@ export const BrowserAPI = {
       }
     },
   },
+
+  /**
+   * Alarms API
+   */
+  alarms: {
+    create(name: string, alarmInfo: { periodInMinutes: number }): void {
+      const api = getBrowserAPI();
+      if (api.alarms) {
+        api.alarms.create(name, alarmInfo);
+      }
+    },
+
+    onAlarm: {
+      addListener(callback: (alarm: any) => void): void {
+        const api = getBrowserAPI();
+        if (api.alarms) {
+          api.alarms.onAlarm.addListener(callback);
+        }
+      },
+    },
+  },
 };
 
 /**
