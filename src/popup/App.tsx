@@ -105,19 +105,16 @@ export function App() {
   }, [currentStep]);
 
   const updateSettings = async (newSettings: Partial<ExtensionSettings>) => {
-    console.log('[App] updateSettings called:', { newSettings, currentSettings: settings });
 
     try {
       // Handle provider change first
       if (newSettings.aiProvider !== undefined && newSettings.aiProvider !== settings.aiProvider) {
-        console.log('[App] Provider changed from', settings.aiProvider, 'to', newSettings.aiProvider);
 
         // Save new provider
         await StorageManager.setAIProvider(newSettings.aiProvider);
 
         // Load the API key for the new provider
         const providerKey = await StorageManager.getApiKey(newSettings.aiProvider);
-        console.log('[App] Loaded API key for new provider:', { provider: newSettings.aiProvider, hasKey: !!providerKey });
 
         // Update state with new provider AND its corresponding API key
         const updated = {
@@ -131,9 +128,7 @@ export function App() {
 
       // Handle API key change (only if provider didn't change)
       if (newSettings.apiKey !== undefined) {
-        console.log('[App] Saving API key:', { provider: settings.aiProvider, keyLength: newSettings.apiKey?.length });
         await StorageManager.setApiKey(settings.aiProvider, newSettings.apiKey);
-        console.log('[App] API key saved successfully');
 
         // Update state with new API key
         const updated = { ...settings, apiKey: newSettings.apiKey };

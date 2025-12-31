@@ -395,7 +395,6 @@ Is Enabled: ${settings.isEnabled}`);
       // Load API key for current provider (already decrypted by StorageManager)
       const apiKey = await StorageManager.getApiKey(aiProvider);
 
-      console.log('[Content Script] getSettings():', {
         aiProvider,
         hasApiKey: !!apiKey,
         apiKeyLength: apiKey?.length || 0,

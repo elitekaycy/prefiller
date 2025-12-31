@@ -36,13 +36,9 @@ export class FormScraper {
     ];
 
     const frameInfo = window.self === window.top ? 'main page' : 'iframe';
-    console.log(`🔍 [${frameInfo}] Starting form scrape...`);
-    console.log(`🔍 [${frameInfo}] Document URL: ${document.location.href}`);
-    console.log(`🔍 [${frameInfo}] Document readyState: ${document.readyState}`);
 
     // Scrape current document (works in both main page and iframes)
     const elements = document.querySelectorAll(selectors.join(', '));
-    console.log(`🔍 [${frameInfo}] Found ${elements.length} total elements matching selectors`);
 
     let skippedCount = 0;
     elements.forEach((element, index) => {
@@ -60,14 +56,11 @@ export class FormScraper {
                         el.hasAttribute('disabled') ? 'disabled' :
                         !this.isVisible(el) ? 'hidden' :
                         'already filled';
-          console.log(`🔍 [${frameInfo}] Skipped element #${index}: ${el.tagName}.${el.className} - ${reason}`);
         }
       }
     });
 
-    console.log(`🔍 [${frameInfo}] Scraped ${fields.length} valid fields, skipped ${skippedCount} fields`);
     if (fields.length > 0) {
-      console.log(`🔍 [${frameInfo}] Field details:`, fields);
     }
     return fields;
   }
@@ -381,17 +374,14 @@ export class FormScraper {
     let filledCount = 0;
     const frameInfo = window.self === window.top ? 'main page' : 'iframe';
 
-    console.log(`🔧 [${frameInfo}] fillFields called with ${fields.length} fields and ${aiResponse.fields.length} responses`);
 
     fields.forEach((field, index) => {
       const response = aiResponse.fields[index];
 
       if (!response || !response.value || response.value === '[SKIP]') {
-        console.log(`⏭️ [${frameInfo}] Field ${index} (${field.label}): Skipping - no value or [SKIP]`);
         return;
       }
 
-      console.log(`📝 [${frameInfo}] Field ${index} (${field.label}): Attempting to fill with "${response.value}" (confidence: ${response.confidence}%)`);
 
       // Validate before filling
       const validation = ValidationPipeline.validate(
@@ -404,7 +394,6 @@ export class FormScraper {
 
       // Skip if invalid and low confidence
       if (!validation.isValid && response.confidence < 70) {
-        console.log(`⏭️ [${frameInfo}] Field ${index} (${field.label}): Skipping - invalid and low confidence`);
         this.addTooltip(field.element, response, validation, 'error');
         return;
       }
@@ -415,18 +404,15 @@ export class FormScraper {
 
         if (success) {
           filledCount++;
-          console.log(`✅ [${frameInfo}] Field ${index} (${field.label}): Successfully filled!`);
           // Add confidence tooltip
           this.addTooltip(field.element, response, validation, 'success');
         } else {
-          console.log(`❌ [${frameInfo}] Field ${index} (${field.label}): Fill returned false`);
         }
       } catch (error) {
         console.error(`❌ [${frameInfo}] Field ${index} (${field.label}): Error -`, error);
       }
     });
 
-    console.log(`📊 [${frameInfo}] fillFields complete: ${filledCount}/${fields.length} fields filled`);
     return filledCount;
   }
 

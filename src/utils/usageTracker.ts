@@ -177,7 +177,6 @@ export class UsageTracker {
     const key = `usage.${provider}` as StorageKey;
     await StorageManager.setSetting(key, data);
 
-    console.log(`[UsageTracker] Reset usage for ${provider} on ${today}`);
   }
 
   /**
@@ -194,7 +193,6 @@ export class UsageTracker {
     const key = `usage.${provider}` as StorageKey;
     await StorageManager.setSetting(key, data);
 
-    console.log(`[UsageTracker] Updated limit for ${provider} to ${newLimit}`);
   }
 
   /**
@@ -221,6 +219,5 @@ export class UsageTracker {
   static async resetAll(): Promise<void> {
     const providers: AIProvider[] = ['groq', 'claude', 'gemini', 'chromeai'];
     await Promise.all(providers.map(p => this.resetUsage(p)));
-    console.log('[UsageTracker] Reset all providers');
   }
 }
