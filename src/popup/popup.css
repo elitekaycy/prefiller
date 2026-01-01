@@ -26,7 +26,7 @@
   position: absolute;
   top: -40px;
   left: 0;
-  background: var(--gemini-accent);
+  background: var(--gemini-primary);
   color: white;
   padding: 8px 16px;
   text-decoration: none;
@@ -45,9 +45,9 @@ a:focus-visible,
 [role="button"]:focus-visible,
 [role="radio"]:focus-visible,
 [tabindex="0"]:focus-visible {
-  outline: 3px solid var(--gemini-accent);
+  outline: 3px solid var(--gemini-primary);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(138, 180, 248, 0.2);
+  box-shadow: 0 0 0 4px var(--gemini-primary-light);
 }
 
 /* Remove default outline when using custom focus */
@@ -279,8 +279,9 @@ body {
 
 .input-field:focus {
   outline: none;
-  border-color: var(--gemini-accent);
+  border-color: var(--gemini-primary);
   background: var(--gemini-surface-hover);
+  box-shadow: 0 0 0 3px var(--gemini-primary-light);
 }
 
 .text-link {
@@ -346,8 +347,8 @@ body {
 }
 
 .doc-item-selected {
-  background: rgba(138, 180, 248, 0.15);
-  border-color: var(--gemini-accent);
+  background: var(--gemini-primary-light);
+  border-color: var(--gemini-primary);
 }
 
 .doc-item-unselected:hover {
@@ -448,12 +449,12 @@ body {
 
 .provider-card:hover {
   background: var(--gemini-surface-hover);
-  border-color: var(--gemini-accent);
+  border-color: var(--gemini-primary);
 }
 
 .provider-card.selected {
-  background: rgba(138, 180, 248, 0.1);
-  border-color: var(--gemini-accent);
+  background: var(--gemini-primary-light);
+  border-color: var(--gemini-primary);
 }
 
 .provider-icon {
@@ -499,12 +500,12 @@ body {
 }
 
 .radio.checked {
-  border-color: var(--gemini-accent);
+  border-color: var(--gemini-primary);
 }
 
 .radio-dot {
   width: 10px;
   height: 10px;
-  background: var(--gemini-accent);
+  background: var(--gemini-primary);
   border-radius: 50%;
 }

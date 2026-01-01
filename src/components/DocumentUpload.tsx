@@ -263,7 +263,7 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
                 <button
                   type="button"
                   onClick={() => removeDocument(doc.id)}
-                  className="text-gray-500 hover:text-red-600 transition-colors"
+                  className="text-[var(--gemini-text-secondary)] hover:text-[var(--gemini-error)] transition-colors"
                   aria-label={`Remove ${doc.name}`}
                 >
                   <span className="material-symbols-outlined text-base" aria-hidden="true">delete</span>

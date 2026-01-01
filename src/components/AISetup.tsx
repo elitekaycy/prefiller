@@ -247,7 +247,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
       <div className="flex-1 space-y-4 pb-20">
         {/* Provider Selection */}
         <div className="space-y-3">
-          <label id="provider-selection-label" className="text-sm font-medium text-gray-700">AI Provider</label>
+          <label id="provider-selection-label" className="text-sm font-medium text-[var(--gemini-text-primary)]">AI Provider</label>
           <div role="radiogroup" aria-labelledby="provider-selection-label" className="grid grid-cols-1 gap-3">
             {/* Groq Option - RECOMMENDED */}
             <button
@@ -262,7 +262,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               tabIndex={aiProvider === 'groq' ? 0 : -1}
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">Groq <span className="text-sm text-blue-600 font-semibold" aria-hidden="true">(RECOMMENDED)</span></div>
+                <div className="provider-name">Groq <span className="text-sm text-[var(--gemini-primary)] font-semibold" aria-hidden="true">(RECOMMENDED)</span></div>
                 <div className={`radio ${aiProvider === 'groq' ? 'checked' : ''}`} aria-hidden="true">
                   {aiProvider === 'groq' && <div className="radio-dot"></div>}
                 </div>
@@ -300,7 +300,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               disabled
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">OpenRouter <span className="text-sm text-gray-500" aria-hidden="true">(DISABLED)</span></div>
+                <div className="provider-name">OpenRouter <span className="text-sm text-[var(--gemini-text-secondary)]" aria-hidden="true">(DISABLED)</span></div>
                 <div className="radio" aria-hidden="true">
                 </div>
               </div>
@@ -317,7 +317,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               disabled
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">HuggingFace <span className="text-sm text-gray-500" aria-hidden="true">(DISABLED)</span></div>
+                <div className="provider-name">HuggingFace <span className="text-sm text-[var(--gemini-text-secondary)]" aria-hidden="true">(DISABLED)</span></div>
                 <div className="radio" aria-hidden="true">
                 </div>
               </div>
@@ -336,7 +336,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
               tabIndex={aiProvider === 'claude' ? 0 : -1}
             >
               <div className="flex items-center justify-between">
-                <div className="provider-name">Anthropic Claude <span className="text-sm text-gray-500" aria-hidden="true">(TESTING)</span></div>
+                <div className="provider-name">Anthropic Claude <span className="text-sm text-[var(--gemini-text-secondary)]" aria-hidden="true">(TESTING)</span></div>
                 <div className={`radio ${aiProvider === 'claude' ? 'checked' : ''}`} aria-hidden="true">
                   {aiProvider === 'claude' && <div className="radio-dot"></div>}
                 </div>
@@ -357,8 +357,8 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             >
               <div className="flex items-center justify-between">
                 <div className="provider-name">
-                  Chrome AI <span className="text-sm text-blue-600" aria-hidden="true">(FREE)</span>
-                  {chromeAIAvailable === true && <span className="text-green-600 ml-2 text-sm" aria-hidden="true">✓</span>}
+                  Chrome AI <span className="text-sm text-[var(--gemini-primary)]" aria-hidden="true">(FREE)</span>
+                  {chromeAIAvailable === true && <span className="text-[var(--gemini-success)] ml-2 text-sm" aria-hidden="true">✓</span>}
                   {chromeAIAvailable === false && <span className="text-orange-600 ml-2 text-sm" aria-hidden="true">Setup Required</span>}
                 </div>
                 <div className={`radio ${aiProvider === 'chromeai' ? 'checked' : ''}`} aria-hidden="true">
@@ -373,13 +373,13 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
         {aiProvider !== 'chromeai' ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label htmlFor="api-key-input" className="text-sm font-medium text-gray-700">
-                API Key <span aria-label="required" className="text-red-500">*</span>
+              <label htmlFor="api-key-input" className="text-sm font-medium text-[var(--gemini-text-primary)]">
+                API Key <span aria-label="required" className="text-[var(--gemini-error)]">*</span>
               </label>
               <button
                 type="button"
                 onClick={openApiKeyPage}
-                className="text-blue-600 hover:text-blue-700 text-xs"
+                className="text-[var(--gemini-primary)] hover:text-[var(--gemini-primary-hover)] text-xs"
                 aria-label={`Get API key for ${aiProvider}`}
               >
                 Get Key →
@@ -407,7 +407,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                   <button
                     type="button"
                     onClick={() => setIsEditMode(true)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-[var(--gemini-text-secondary)] hover:text-[var(--gemini-text-primary)]"
                     aria-label="Edit API key"
                   >
                     <span className="material-symbols-outlined text-sm" aria-hidden="true">edit</span>
@@ -416,7 +416,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-[var(--gemini-text-secondary)] hover:text-[var(--gemini-text-primary)]"
                   aria-label={showKey ? 'Hide API key' : 'Show API key'}
                   aria-pressed={showKey}
                 >

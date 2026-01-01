@@ -38,15 +38,15 @@ export function FormFiller({ isEnabled, onToggle }: FormFillerProps) {
 
   return (
     <div className="bg-white rounded-lg p-4 shadow-sm border">
-      <h3 className="text-lg font-semibold mb-3 text-gray-800">Form Filling</h3>
+      <h3 className="text-lg font-semibold mb-3 text-[var(--gemini-text-primary)]">Form Filling</h3>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Enable Auto-Fill</span>
+          <span className="text-sm font-medium text-[var(--gemini-text-primary)]">Enable Auto-Fill</span>
           <button
             onClick={() => onToggle(!isEnabled)}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              isEnabled ? 'bg-blue-600' : 'bg-gray-300'
+              isEnabled ? 'bg-[var(--gemini-primary)]' : 'bg-[var(--gemini-border)]'
             }`}
           >
             <span
@@ -61,7 +61,7 @@ export function FormFiller({ isEnabled, onToggle }: FormFillerProps) {
           <button
             onClick={handleAnalyzePage}
             disabled={isAnalyzing || !isEnabled}
-            className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-[var(--gemini-success)] text-white px-4 py-2 rounded-md hover:bg-[var(--gemini-success)] disabled:bg-[var(--gemini-border)] disabled:cursor-not-allowed transition-colors"
           >
             {isAnalyzing ? 'Analyzing...' : '🔍 Analyze Page'}
           </button>
@@ -69,13 +69,13 @@ export function FormFiller({ isEnabled, onToggle }: FormFillerProps) {
           <button
             onClick={handleFillForms}
             disabled={!isEnabled}
-            className="w-full bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-[var(--gemini-accent)] text-white px-4 py-2 rounded-md hover:bg-[var(--gemini-accent-hover)] disabled:bg-[var(--gemini-border)] disabled:cursor-not-allowed transition-colors"
           >
             ✨ Fill Forms
           </button>
         </div>
 
-        <div className="text-xs text-gray-500 space-y-1">
+        <div className="text-xs text-[var(--gemini-text-secondary)] space-y-1">
           <p>• Click "Analyze Page" to detect forms</p>
           <p>• Click "Fill Forms" to auto-fill with AI</p>
           <p>• Make sure to upload documents and set API key first</p>
