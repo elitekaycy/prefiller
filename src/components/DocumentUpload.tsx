@@ -36,7 +36,6 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
 
         // Show warnings if any
         if (validation.warnings && validation.warnings.length > 0) {
-          console.warn(`Warnings for ${file.name}:`, validation.warnings);
         }
 
         setParsingStatus(`Processing ${file.name}...`);

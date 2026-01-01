@@ -44,7 +44,6 @@ export class PDFParser extends BaseDocumentParser {
       // Check for suspicious content and warn
       const suspiciousCheck = FileValidator.hasSuspiciousContent(extractedText);
       if (suspiciousCheck.suspicious) {
-        console.warn('Suspicious patterns detected in PDF content:', suspiciousCheck.patterns);
       }
 
       // Extract information using base class methods

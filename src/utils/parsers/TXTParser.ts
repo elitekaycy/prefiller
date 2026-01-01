@@ -29,7 +29,6 @@ export class TXTParser extends BaseDocumentParser {
     // Check for suspicious content
     const suspiciousCheck = FileValidator.hasSuspiciousContent(extractedText);
     if (suspiciousCheck.suspicious) {
-      console.warn('Suspicious patterns detected in text file:', suspiciousCheck.patterns);
     }
 
     const rawText = text;
