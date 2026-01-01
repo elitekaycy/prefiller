@@ -208,7 +208,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
           <div
             className="rounded-lg border p-3 text-center"
             style={{
-              backgroundColor: hasDocuments ? 'rgba(138, 180, 248, 0.1)' : 'var(--gemini-surface)',
+              backgroundColor: hasDocuments ? 'var(--gemini-accent-lighter)' : 'var(--gemini-surface)',
               borderColor: hasDocuments ? 'var(--gemini-accent)' : 'var(--gemini-border)'
             }}
           >
@@ -216,7 +216,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center"
                 style={{
-                  backgroundColor: hasDocuments ? 'rgba(138, 180, 248, 0.2)' : 'var(--gemini-bg)'
+                  backgroundColor: hasDocuments ? 'var(--gemini-accent-medium)' : 'var(--gemini-bg)'
                 }}
               >
                 <span
@@ -391,7 +391,7 @@ export function FormActions({ isEnabled, onToggle, onBack, hasDocuments, hasApiK
         <div
           className="rounded-lg border p-3"
           style={{
-            backgroundColor: 'rgba(138, 180, 248, 0.05)',
+            backgroundColor: 'var(--gemini-accent-light)',
             borderColor: 'var(--gemini-border)'
           }}
         >

@@ -1,0 +1,16 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- White rounded background -->
+  <rect width="128" height="128" rx="20" fill="white"/>
+
+  <!-- Pink/Magenta gradient text 'P' -->
+  <defs>
+    <linearGradient id="pinkGradient128" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:hsl(330, 80%, 52%);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:hsl(330, 75%, 60%);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Letter P -->
+  <text x="64" y="100" font-family="Arial, sans-serif" font-size="96" font-weight="bold"
+        fill="url(#pinkGradient128)" text-anchor="middle">P</text>
+</svg>

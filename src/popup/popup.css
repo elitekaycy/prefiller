@@ -69,16 +69,32 @@ a:focus:not(:focus-visible) {
    Theme Colors
    ============================================ */
 
-/* Gemini Dark Theme Colors */
+/* Prefiller Theme Colors */
 :root {
-  --gemini-bg: #1f1f1f;
-  --gemini-surface: #2a2a2a;
-  --gemini-surface-hover: #3a3a3a;
-  --gemini-border: #4a4a4a;
+  /* Background Colors */
+  --gemini-bg: hsl(222, 47%, 11%); /* #0F1429 - Navy Dark Blue */
+  --gemini-surface: hsl(222, 47%, 16%); /* Slightly lighter navy */
+  --gemini-surface-hover: hsl(222, 47%, 20%); /* Even lighter on hover */
+  --gemini-border: hsl(222, 30%, 30%); /* Muted border */
+
+  /* Text Colors */
   --gemini-text-primary: #e8eaed;
   --gemini-text-secondary: #b8bdc3;
-  --gemini-accent: #8ab4f8;
-  --gemini-accent-hover: #aecbfa;
+
+  /* Primary Pink/Magenta */
+  --gemini-primary: hsl(330, 80%, 52%); /* #EB1A99 - Pink/Magenta */
+  --gemini-primary-hover: hsl(330, 80%, 60%); /* Lighter pink on hover */
+  --gemini-primary-light: rgba(235, 26, 153, 0.1); /* 10% opacity */
+  --gemini-primary-lighter: rgba(235, 26, 153, 0.2); /* 20% opacity */
+
+  /* Accent Bright Blue */
+  --gemini-accent: hsl(207, 80%, 58%); /* #3098F8 - Bright Blue */
+  --gemini-accent-hover: hsl(207, 80%, 68%); /* Lighter blue on hover */
+  --gemini-accent-light: rgba(48, 152, 248, 0.05); /* 5% opacity */
+  --gemini-accent-lighter: rgba(48, 152, 248, 0.1); /* 10% opacity */
+  --gemini-accent-medium: rgba(48, 152, 248, 0.2); /* 20% opacity */
+
+  /* Status Colors */
   --gemini-success: #81c995;
   --gemini-error: #f28b82;
   --gemini-warning: #fdd663;
@@ -181,8 +197,8 @@ body {
 }
 
 .gemini-button.primary {
-  background: var(--gemini-accent);
-  color: #1f1f1f;
+  background: linear-gradient(135deg, var(--gemini-primary) 0%, hsl(330, 75%, 60%) 100%);
+  color: white;
 }
 
 .gemini-button.secondary {

@@ -46,7 +46,7 @@ export function DocumentSelector({
         <div
           className="rounded-lg border p-3 flex items-start gap-2"
           style={{
-            backgroundColor: 'rgba(138, 180, 248, 0.05)',
+            backgroundColor: 'var(--gemini-accent-light)',
             borderColor: 'var(--gemini-border)'
           }}
         >

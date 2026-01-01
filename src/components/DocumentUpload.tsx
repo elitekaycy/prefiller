@@ -161,7 +161,7 @@ export function DocumentUpload({ documents, onDocumentsChange }: DocumentUploadP
         }`}
         style={{
           borderColor: isDragging ? 'var(--gemini-accent)' : 'var(--gemini-border)',
-          backgroundColor: isDragging ? 'rgba(138, 180, 248, 0.1)' : 'var(--gemini-bg)'
+          backgroundColor: isDragging ? 'var(--gemini-accent-lighter)' : 'var(--gemini-bg)'
         }}
         onDrop={handleDrop}
         onDragOver={handleDragOver}

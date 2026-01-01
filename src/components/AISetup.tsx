@@ -433,7 +433,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
             <div
               className="rounded-lg border p-3 text-sm"
               style={{
-                backgroundColor: 'rgba(138, 180, 248, 0.1)',
+                backgroundColor: 'var(--gemini-accent-lighter)',
                 borderColor: 'var(--gemini-accent)'
               }}
             >
@@ -536,7 +536,7 @@ export function AISetup({ aiProvider, apiKey, onProviderChange, onApiKeyChange, 
                     ? 'rgba(242, 139, 130, 0.05)'
                     : usageStats.percentage >= 80
                     ? 'rgba(253, 214, 99, 0.05)'
-                    : 'rgba(138, 180, 248, 0.05)',
+                    : 'var(--gemini-accent-light)',
                   borderColor: usageStats.isBlocked
                     ? 'var(--gemini-error)'
                     : usageStats.percentage >= 80

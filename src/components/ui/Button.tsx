@@ -22,13 +22,7 @@ export const Button = ({
   type = 'button',
   className = '',
 }: ButtonProps) => {
-  const baseClasses = 'font-medium rounded-lg transition-colors flex items-center justify-center gap-2';
-
-  const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300',
-    secondary: 'bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:bg-gray-100',
-    danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
-  };
+  const baseClasses = 'font-medium rounded-lg transition-all flex items-center justify-center gap-2';
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
@@ -38,14 +32,38 @@ export const Button = ({
 
   const isDisabled = disabled || loading;
 
+  const getButtonStyle = () => {
+    if (variant === 'primary') {
+      return {
+        background: 'linear-gradient(135deg, var(--gemini-primary) 0%, hsl(330, 75%, 60%) 100%)',
+        color: 'white',
+      };
+    }
+    if (variant === 'secondary') {
+      return {
+        background: 'var(--gemini-surface)',
+        color: 'var(--gemini-text-primary)',
+        border: '1px solid var(--gemini-border)',
+      };
+    }
+    if (variant === 'danger') {
+      return {
+        background: 'var(--gemini-error)',
+        color: 'white',
+      };
+    }
+    return {};
+  };
+
   return (
     <button
       type={type}
       onClick={onClick}
       disabled={isDisabled}
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${
+      className={`${baseClasses} ${sizeClasses[size]} ${
         isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
       } ${className}`}
+      style={getButtonStyle()}
     >
       {loading && <LoadingSpinner size="sm" />}
       {children}
